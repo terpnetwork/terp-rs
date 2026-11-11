@@ -1,0 +1,31 @@
+[package]
+name = "voting-circuits-zakura"
+version = "0.10.0"
+edition = "2021"
+description = "valargroup/voting-circuits 0.10.0 (git 68d69c6d) ported to the zakura Halo2 fork so CS/VK serialize into the CosmWasm stored-circuit format. See PORT.md."
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lib]
+name = "voting_circuits"
+bench = false
+
+[dependencies]
+orchard = { package = "zakura-orchard", version = "=5.0.0-rc.3", default-features = false, features = ["backend-halo2", "circuit", "circuit-composition", "wallet", "zip32-addresses", "std"] }
+halo2_proofs = { workspace = true }
+halo2_gadgets = { workspace = true }
+pasta_curves = { workspace = true, features = ["bits"] }
+ff = { workspace = true }
+group = { workspace = true }
+rand = { version = "0.10", default-features = false, features = ["std", "std_rng", "thread_rng"] }
+blake2b_simd = { workspace = true, features = ["std"] }
+poseidon = { package = "zakura-halo2-poseidon", version = "=5.0.0-rc.3" }
+incrementalmerkletree = { workspace = true }
+lazy_static = { workspace = true }
+sinsemilla = { workspace = true }
+itertools = "0.14.0"
+
+[lints.clippy]
+too_many_arguments = "allow"
+type_complexity = "allow"
+needless_range_loop = "allow"
