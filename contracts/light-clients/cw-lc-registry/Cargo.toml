@@ -1,0 +1,29 @@
+[package]
+name = "cw-lc-registry"
+version = "0.0.1"
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Light-client peer registry: operators (zakura p2pv2 attestation services) register, IBC clients subscribe to them, and signed PoW node state is queryable. Label family terp/lc/registry."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+interface = ["dep:cw-orch"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+# hash-blake: BLAKE3 host import for report digests (team wasmvm).
+cosmwasm-std = { workspace = true, features = ["hash-blake", "cosmwasm_2_0"] }
+cw-orch = { workspace = true, optional = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+hex = { workspace = true, features = ["std"] }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+ed25519-dalek = { workspace = true }
