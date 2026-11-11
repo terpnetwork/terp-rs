@@ -92,6 +92,48 @@ bridge = [
 ]
 auth = ["dep:terp-authenticator-suite"]
 ict = ["dep:ict-rs-cw-orch", "dep:ict-rs"]
+# Privacy-products unified suite (workstreams A + B). See suites/privacy.rs.
+privacy = [
+    "dep:cw-lc-registry",
+    "dep:terp-seams",
+    "dep:frost_escrow",
+    "dep:threshold_committee",
+    "dep:ed25519-dalek",
+    # Unifies abstract-cw-multi-test `hash-blake` so MockBech32 serves blake3_256.
+    "dep:cw-multi-test",
+    # Workstream A: auctions-frost + dao-zk-voting (suites/privacy/{auctions,zk_voting}.rs).
+    "dep:svg-auction",
+    "dep:cw721-svg",
+    "dep:cw-svg",
+    "dep:cw721",
+    "dep:cw-vote-ceremony",
+    "cw-vote-ceremony/interface",
+    "dep:cw4",
+    "dep:cw4-group",
+    "dep:cw-utils",
+    "dep:dao-dao-core",
+    "dep:dao-interface",
+    "dep:dao-voting",
+    "dep:dao-voting-cw4",
+    "dep:dao-proposal-single",
+    "dep:dao-pre-propose-single",
+    "dep:frost-ed25519",
+    "dep:rand08",
+    "dep:rand",
+    "rand/std_rng",
+    "dep:reddsa",
+    # Real cast-circuit keys + host verify dispatch (suites/privacy/vote_circuit.rs).
+    "dep:halo2_proofs",
+    "dep:zk-cosmwasm",
+    "dep:voting-circuits-zakura",
+    "cosmwasm-std/zk",
+    # Seller view envelopes (X25519 + XChaCha20-Poly1305) and the zap-1 payment gate.
+    "dep:curve25519-dalek",
+    "dep:chacha20poly1305",
+    "dep:cw-ics08-wasm-zap1",
+]
+# Live run: ict-rs Docker Terp + anvil (+ zakura via ZAKURA_RPC_URL).
+privacy-live = ["privacy", "ict", "ict-rs/ethereum", "ict-rs/zakura", "dep:tokio"]
 # Product A clearnet claim (fresh Halo2 + proof_instance_verify). Slow K=18.
 headstash = ["dep:cw-headstash", "dep:zk-headstash", "dep:rand", "zk-host"]
 # morocco-1 gov drafts. The deposit signer is a cw-orch-kms session.
@@ -199,6 +241,8 @@ cw-ics08-wasm-crosslink = { workspace = true, optional = true, features = ["libr
 cw-ics08-wasm-dregg = { workspace = true, optional = true, features = ["library"] }
 cw-ics08-wasm-terp = { workspace = true, optional = true, features = ["library"] }
 cw-ics08-wasm-zap1 = { workspace = true, optional = true, features = ["library"] }
+cw-lc-registry = { workspace = true, optional = true, features = ["library", "interface"] }
+cw-multi-test = { workspace = true, optional = true }
 cw-infuser = { workspace = true, optional = true, features = ["interface"] }
 cw-norick = { workspace = true, optional = true, features = ["library"] }
 cw-nullifier-auth = { workspace = true, optional = true, features = ["library"] }
@@ -217,12 +261,33 @@ cw-svg-minter = { workspace = true, optional = true, features = ["interface"] }
 cw-vote-anchor = { workspace = true, optional = true, features = ["library"] }
 cw-vote-ceremony = { workspace = true, optional = true, features = ["library"] }
 cw-zk-verify-demo = { workspace = true, features = ["library"] }
+cw-svg = { workspace = true, optional = true }
+cw-utils = { workspace = true, optional = true }
+cw4 = { workspace = true, optional = true }
+cw4-group = { workspace = true, optional = true, features = ["library"] }
+cw721 = { workspace = true, optional = true }
+dao-dao-core = { workspace = true, optional = true, features = ["library"] }
+dao-interface = { workspace = true, optional = true }
+dao-pre-propose-single = { workspace = true, optional = true, features = ["library"] }
+dao-proposal-single = { workspace = true, optional = true, features = ["library"] }
+dao-voting = { workspace = true, optional = true }
+dao-voting-cw4 = { workspace = true, optional = true, features = ["library"] }
+frost-ed25519 = { workspace = true, optional = true, features = ["std"] }
+rand08 = { workspace = true, optional = true }
+halo2_proofs = { workspace = true, optional = true }
+# valargroup voting-circuits 0.10.0 on the zakura Halo2 fork (crates/voting-circuits-zakura/PORT.md).
+voting-circuits-zakura = { path = "../../../crates/voting-circuits-zakura", optional = true }
+curve25519-dalek = { workspace = true, optional = true }
+chacha20poly1305 = { workspace = true, optional = true }
+reddsa = { workspace = true, optional = true, features = ["pallas-pasta"] }
 cw420 = { workspace = true, optional = true, features = ["library"] }
 cw721-svg = { workspace = true, optional = true, features = ["interface"] }
 dao-testing = { workspace = true, optional = true }
 dotenv = { workspace = true, optional = true }
 dotenvy = { version = "0.15", optional = true }
+ed25519-dalek = { workspace = true, optional = true }
 env_logger = { workspace = true, optional = true }
+frost_escrow = { workspace = true, optional = true }
 hm-loyalty-whitelist = { workspace = true, optional = true }
 hm-nft-minter = { workspace = true, optional = true, features = ["library", "interface"] }
 hm-nft-oracle = { workspace = true, optional = true }
@@ -248,11 +313,14 @@ svg-auction = { workspace = true, optional = true, features = ["library", "inter
 terp-account = { workspace = true, optional = true, features = ["full", "interface"] }
 terp-authenticator-suite = { workspace = true, optional = true }
 terp-bls = { workspace = true, optional = true, features = ["library"] }
+terp-seams = { workspace = true, optional = true, features = ["dex"] }
 terp-bounty-escrow = { workspace = true, optional = true, features = ["library", "interface", "dev-chain-guard"] }
 terp-dao = { workspace = true, optional = true, features = ["library"] }
 terp-dregg = { workspace = true, optional = true, features = ["library"] }
 terp-frost = { workspace = true, optional = true, features = ["library"] }
 terp-zktls = { workspace = true, optional = true, features = ["library"] }
+threshold_committee = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true, features = ["rt-multi-thread"] }
 terp721-account = { workspace = true, optional = true }
 terp721-account-manifold = { workspace = true, optional = true, features = ["interface"] }
 trusted-builder-sbt = { workspace = true, optional = true, features = ["library", "interface"] }
@@ -261,6 +329,10 @@ zk-cosmwasm = { workspace = true, optional = true }
 zk-headstash = { workspace = true, optional = true, features = ["interface", "host-crypto", "multicore"] }
 
 [dev-dependencies]
+# Gas baselines on optimized wasm (tests/privacy_bench.rs, #[ignore]).
+cosmwasm-vm = { workspace = true, features = ["iterator", "staking", "stargate", "zk", "bn254", "hash-blake", "hash-poseidon", "redpallas"] }
+# Wire-compat check of svg-auction's payment-client mirror (suites/privacy/bid_view.rs).
+cw-lc-zcash = { path = "../../../contracts/light-clients/cw-lc-zcash", features = ["library"] }
 hex = { workspace = true, features = ["std"] }
 
 [[example]]

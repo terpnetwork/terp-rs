@@ -381,6 +381,7 @@ impl<Chain: CwEnv> TerpProductSuite<Chain> {
             &cw_vote_ceremony::InstantiateMsg {
                 admin: Some(admin_s.clone()),
                 max_nullifiers_per_mark: 8,
+                zk_proposals: None,
             },
             Some(admin),
             &[],
