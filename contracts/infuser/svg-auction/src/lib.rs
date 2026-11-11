@@ -8,15 +8,24 @@
 //!   in the same tx; ends at `end_time`; a bid in the last `extension` seconds pushes the end out.
 //! * settle (anyone, after end): NFT to winner, proceeds to seller minus protocol fee; no bid -> NFT back.
 //! * cancel: seller only and only while there is no bid.
+//! * private (sealed) auctions settled in shielded ZEC, with a fresh weighted FROST
+//!   multisig per bid: see [`private`].
 use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{
-    Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Order,
-    Response, StdResult, Timestamp, Uint128, WasmMsg, from_json, to_json_binary,
+    Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, Event, HexBinary, MessageInfo,
+    Order, Response, StdResult, Timestamp, Uint128, WasmMsg, from_json, to_json_binary,
 };
 use cw_storage_plus::{Bound, Item, Map};
 
 /// cw-orch contract id and artifact label (`artifacts/svg_auction.wasm`).
 pub const CONTRACT_NAME: &str = "svg-auction";
+
+pub mod private;
+pub use private::{
+    BidStatus, CreatePrivateAuction, PlacePrivateBid, PrivateAction, PrivateAuction, PrivateBid,
+    InclusionStatus, PaymentClientQuery, PaymentInclusion, PaymentInclusionResponse,
+    PrivatePolicyResponse, PrivateStatus, ShieldedRelease, SigningDigestQuery,
+};
 
 #[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
 mod interface;
@@ -32,7 +41,7 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized,
 }
-fn err<T>(m: impl Into<String>) -> Result<T, ContractError> {
+pub(crate) fn err<T>(m: impl Into<String>) -> Result<T, ContractError> {
     Err(ContractError::Msg(m.into()))
 }
 
@@ -63,16 +72,60 @@ pub enum Cw721HookMsg {
         reserve_price: Uint128,
         is_instant_sale: bool,
     },
+    /// Sealed auction settled in shielded ZEC: bids are commitments backed by a per-bid
+    /// FROST group; no funds or amounts touch Terp.
+    CreatePrivateAuction(CreatePrivateAuction),
 }
 #[cw_serde]
 pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
-    PlaceBid { auction_id: u64 },
-    Settle { auction_id: u64 },
-    CancelAuction { auction_id: u64 },
+    PlaceBid {
+        auction_id: u64,
+    },
+    Settle {
+        auction_id: u64,
+    },
+    CancelAuction {
+        auction_id: u64,
+    },
+    /// Escrow note commitment + amount commitment (both hidden) + two FROST group keys.
+    PlacePrivateBid(PlacePrivateBid),
+    /// Close the bid and record its shielded refund. `signature` by `reclaim_vk` (bidder +
+    /// platform), or none from the bidder once the auction closed or the grace period passed.
+    ReclaimPrivateBid {
+        auction_id: u64,
+        bid_id: u64,
+        release: ShieldedRelease,
+        signature: Option<HexBinary>,
+    },
+    /// Settle to `bid_id`: `signature` by `finalize_vk` (all three parties) over the
+    /// shielded payment record, and `payment_ref` (zap-1 `app_data_hash`) naming a
+    /// Confirmed Zcash inclusion of the seller payment at the auction's payment client.
+    /// Moves the NFT to the bidder.
+    FinalizePrivateAuction {
+        auction_id: u64,
+        bid_id: u64,
+        release: ShieldedRelease,
+        signature: HexBinary,
+        payment_ref: HexBinary,
+    },
+    /// Optional public disclosure: publish the release OVK (checked against `ovk_tag`)
+    /// so anyone can decrypt the payment notes and check them against `notes_cm`.
+    DisclosePrivateRelease {
+        auction_id: u64,
+        bid_id: u64,
+        ovk: HexBinary,
+    },
+    /// Seller while no bid is active, or anyone after `end_time + reclaim_grace`: NFT back
+    /// to the seller.
+    CancelPrivateAuction {
+        auction_id: u64,
+    },
 }
 #[cw_serde]
 #[derive(QueryResponses)]
+// Parsed once per query; boxing the digest variant would only add an allocation.
+#[allow(clippy::large_enum_variant)]
 pub enum QueryMsg {
     #[returns(Config)]
     Config {},
@@ -92,6 +145,39 @@ pub enum QueryMsg {
     },
     #[returns(Vec<Bid>)]
     BidHistoryByAuctionId { auction_id: u64, limit: Option<u32> },
+    #[returns(PrivateAuction)]
+    PrivateAuction { auction_id: u64 },
+    /// Open private auction for a token, if any.
+    #[returns(Option<PrivateAuction>)]
+    PrivateNftAuction {
+        nft_contract: String,
+        token_id: String,
+    },
+    #[returns(Vec<PrivateBid>)]
+    PrivateBids {
+        auction_id: u64,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
+    /// The 32-byte digest a FROST group signs for `action`.
+    #[returns(HexBinary)]
+    PrivateSigningDigest {
+        action: PrivateAction,
+        auction_id: u64,
+        bidder: String,
+        escrow_cm: HexBinary,
+        commitment: HexBinary,
+        memo_cm: HexBinary,
+        ovk_tag: HexBinary,
+        reclaim_vk: HexBinary,
+        finalize_vk: HexBinary,
+        bid_id: Option<u64>,
+        dkg_transcript: Option<HexBinary>,
+        release: Option<ShieldedRelease>,
+    },
+    /// Share allocation and thresholds used by private bids.
+    #[returns(PrivatePolicyResponse)]
+    PrivatePolicy {},
 }
 #[cw_serde]
 pub struct Config {
@@ -175,7 +261,7 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
-fn send_nft_back(nft: &Addr, to: &Addr, token_id: &str) -> StdResult<CosmosMsg> {
+pub(crate) fn send_nft_back(nft: &Addr, to: &Addr, token_id: &str) -> StdResult<CosmosMsg> {
     Ok(WasmMsg::Execute {
         contract_addr: nft.to_string(),
         funds: vec![],
@@ -218,7 +304,7 @@ fn payout(c: &Config, a: &AuctionResponse, amount: Uint128) -> Vec<CosmosMsg> {
     }
     v
 }
-fn paid(info: &MessageInfo, denom: &str) -> Result<Uint128, ContractError> {
+pub(crate) fn paid(info: &MessageInfo, denom: &str) -> Result<Uint128, ContractError> {
     if info.funds.len() != 1 || info.funds[0].denom != denom {
         return err(format!("send exactly one coin of {denom}"));
     }
@@ -236,11 +322,16 @@ pub fn execute(
     let c = CONFIG.load(deps.storage)?;
     match msg {
         ExecuteMsg::ReceiveNft(r) => {
-            let Cw721HookMsg::CreateAuction {
-                denom,
-                reserve_price,
-                is_instant_sale,
-            } = from_json(&r.msg)?;
+            let (denom, reserve_price, is_instant_sale) = match from_json(&r.msg)? {
+                Cw721HookMsg::CreateAuction {
+                    denom,
+                    reserve_price,
+                    is_instant_sale,
+                } => (denom, reserve_price, is_instant_sale),
+                Cw721HookMsg::CreatePrivateAuction(p) => {
+                    return private::create(deps, env, info, &c, r, p);
+                }
+            };
             if !c.accepted_denom.contains(&denom) {
                 return err(format!("denom {denom} not accepted"));
             }
@@ -386,6 +477,37 @@ pub fn execute(
                     .add_attribute("amount", format!("{}{}", a.amount, a.denom)),
             ))
         }
+        ExecuteMsg::PlacePrivateBid(b) => private::place_bid(deps, env, info, b),
+        ExecuteMsg::ReclaimPrivateBid {
+            auction_id,
+            bid_id,
+            release,
+            signature,
+        } => private::reclaim(deps, env, info, auction_id, bid_id, release, signature),
+        ExecuteMsg::FinalizePrivateAuction {
+            auction_id,
+            bid_id,
+            release,
+            signature,
+            payment_ref,
+        } => private::finalize(
+            deps,
+            env,
+            info,
+            auction_id,
+            bid_id,
+            release,
+            signature,
+            payment_ref,
+        ),
+        ExecuteMsg::DisclosePrivateRelease {
+            auction_id,
+            bid_id,
+            ovk,
+        } => private::disclose(deps, auction_id, bid_id, ovk),
+        ExecuteMsg::CancelPrivateAuction { auction_id } => {
+            private::cancel(deps, env, info, auction_id)
+        }
         ExecuteMsg::CancelAuction { auction_id } => {
             let mut a = AUCTIONS.load(deps.storage, auction_id)?;
             if info.sender != a.seller {
@@ -408,7 +530,7 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_json_binary(&CONFIG.load(deps.storage)?),
         QueryMsg::Auction { auction_id } => {
@@ -455,6 +577,53 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .map(|r| r.map(|(_, b)| b))
                 .collect::<StdResult<Vec<_>>>()?,
         ),
+        QueryMsg::PrivateAuction { auction_id } => {
+            to_json_binary(&private::query_auction(deps, auction_id)?)
+        }
+        QueryMsg::PrivateNftAuction {
+            nft_contract,
+            token_id,
+        } => {
+            let nft = deps.api.addr_validate(&nft_contract)?;
+            to_json_binary(&private::query_nft(deps, &nft, &token_id)?)
+        }
+        QueryMsg::PrivateBids {
+            auction_id,
+            start_after,
+            limit,
+        } => to_json_binary(&private::query_bids(deps, auction_id, start_after, limit)?),
+        QueryMsg::PrivateSigningDigest {
+            action,
+            auction_id,
+            bidder,
+            escrow_cm,
+            commitment,
+            memo_cm,
+            ovk_tag,
+            reclaim_vk,
+            finalize_vk,
+            bid_id,
+            dkg_transcript,
+            release,
+        } => to_json_binary(&private::query_digest(
+            deps,
+            env,
+            SigningDigestQuery {
+                action,
+                auction_id,
+                bidder,
+                escrow_cm,
+                commitment,
+                memo_cm,
+                ovk_tag,
+                reclaim_vk,
+                finalize_vk,
+                bid_id,
+                dkg_transcript,
+                release,
+            },
+        )?),
+        QueryMsg::PrivatePolicy {} => to_json_binary(&private::policy()),
     }
 }
 
@@ -468,6 +637,8 @@ pub fn migrate(
     Ok(Response::new().add_attribute("action", "migrate"))
 }
 
+#[cfg(test)]
+mod private_tests;
 #[cfg(test)]
 mod tests;
 

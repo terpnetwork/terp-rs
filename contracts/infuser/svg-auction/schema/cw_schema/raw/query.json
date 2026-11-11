@@ -54,6 +54,87 @@
               "value": 2
             }
           }
+        },
+        "private_auction": {
+          "type": "named",
+          "properties": {
+            "auction_id": {
+              "value": 1
+            }
+          }
+        },
+        "private_bids": {
+          "type": "named",
+          "properties": {
+            "auction_id": {
+              "value": 1
+            },
+            "limit": {
+              "value": 5
+            },
+            "start_after": {
+              "value": 3
+            }
+          }
+        },
+        "private_nft_auction": {
+          "description": "Open private auction for a token, if any.",
+          "type": "named",
+          "properties": {
+            "nft_contract": {
+              "value": 2
+            },
+            "token_id": {
+              "value": 2
+            }
+          }
+        },
+        "private_policy": {
+          "description": "Share allocation and thresholds used by private bids.",
+          "type": "named",
+          "properties": {}
+        },
+        "private_signing_digest": {
+          "description": "The 32-byte digest a FROST group signs for `action`.",
+          "type": "named",
+          "properties": {
+            "action": {
+              "value": 6
+            },
+            "auction_id": {
+              "value": 1
+            },
+            "bid_id": {
+              "value": 3
+            },
+            "bidder": {
+              "value": 2
+            },
+            "commitment": {
+              "value": 7
+            },
+            "dkg_transcript": {
+              "value": 8
+            },
+            "escrow_cm": {
+              "value": 7
+            },
+            "finalize_vk": {
+              "value": 7
+            },
+            "memo_cm": {
+              "value": 7
+            },
+            "ovk_tag": {
+              "value": 7
+            },
+            "reclaim_vk": {
+              "value": 7
+            },
+            "release": {
+              "value": 11
+            }
+          }
         }
       }
     },
@@ -82,6 +163,71 @@
       "name": "core::option::Option<u32>",
       "type": "optional",
       "inner": 4
+    },
+    {
+      "name": "svg_auction_private_PrivateAction",
+      "type": "enum",
+      "cases": {
+        "bind_finalize": {
+          "description": "Proof-of-possession of `finalize_vk` at bid time (6-of-6 => B, P and S present).",
+          "type": "unit"
+        },
+        "bind_reclaim": {
+          "description": "Proof-of-possession of `reclaim_vk` at bid time (5-of-6 => B and P present).",
+          "type": "unit"
+        },
+        "finalize": {
+          "description": "Settle the auction to this bid and record the shielded payment (`finalize_vk`).",
+          "type": "unit"
+        },
+        "reclaim": {
+          "description": "Close the bid and record the shielded refund (signed by `reclaim_vk`).",
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_hex_binary_HexBinary",
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "hexBinary"
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::hex_binary::HexBinary>",
+      "type": "optional",
+      "inner": 7
+    },
+    {
+      "name": "svg_auction_private_ShieldedRelease",
+      "description": "A Zcash payment authorised by a bid group, as recorded on Terp.",
+      "type": "struct",
+      "properties": {
+        "notes_cm": {
+          "description": "`blake2b(NOTES_DOMAIN || n || note_1 || .. || note_n)` over the 382-byte\nSEAM-NOTE-OUT encodings of the payment outputs (see [`notes_preimage`]). Each note\ncarries a random `rcm`, so the commitment hides values and destinations.",
+          "value": 7
+        },
+        "ovk_ciphertext": {
+          "description": "The same notes encrypted under the bid's OVK. Opaque on chain.",
+          "value": 10
+        },
+        "ovk_tag": {
+          "description": "`blake2b(OVK_DOMAIN || ovk)`; must equal the bid's `ovk_tag`.",
+          "value": 7
+        },
+        "payment_cm": {
+          "description": "Finalize only: note commitment of the seller's payment output, which the payment\nclient must attest as included on Zcash.",
+          "value": 8
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "core::option::Option<svg_auction::private::ShieldedRelease>",
+      "type": "optional",
+      "inner": 9
     }
   ]
 }

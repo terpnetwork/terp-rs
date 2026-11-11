@@ -20,3 +20,12 @@ cw-orch = { workspace = true, optional = true }
 cw-storage-plus = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
+# zap-1 leaf of the bid memo, checked against the payment client's inclusion.
+zap1-verify = { workspace = true }
+
+[dev-dependencies]
+# Real FROST-Ed25519 DKG + signing for private-auction tests (workspace deps, no new crates).
+frost-ed25519 = { workspace = true, features = ["std"] }
+rand08 = { workspace = true }
+# Gas baselines on the optimized wasm (src/private_tests/vm_gas.rs, #[ignore]).
+cosmwasm-vm = { workspace = true, features = ["iterator", "staking", "stargate", "zk", "bn254", "hash-blake", "hash-poseidon", "redpallas"] }

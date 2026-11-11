@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PrivatePolicyResponse",
+  "type": "object",
+  "required": [
+    "bidder_shares",
+    "commit_domain",
+    "finalize_threshold",
+    "memo_domain",
+    "notes_domain",
+    "ovk_domain",
+    "payment_memo_prefix",
+    "platform_shares",
+    "reclaim_threshold",
+    "seller_shares",
+    "sign_domain",
+    "total_shares"
+  ],
+  "properties": {
+    "bidder_shares": {
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "commit_domain": {
+      "type": "string"
+    },
+    "finalize_threshold": {
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "memo_domain": {
+      "type": "string"
+    },
+    "notes_domain": {
+      "type": "string"
+    },
+    "ovk_domain": {
+      "type": "string"
+    },
+    "payment_memo_prefix": {
+      "type": "string"
+    },
+    "platform_shares": {
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "reclaim_threshold": {
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "seller_shares": {
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "sign_domain": {
+      "type": "string"
+    },
+    "total_shares": {
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}

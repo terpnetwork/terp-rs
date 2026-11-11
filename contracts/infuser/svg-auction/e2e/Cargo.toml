@@ -9,3 +9,9 @@ description = "TerpArtifactStack field check for this contract."
 cw-orch = { workspace = true }
 cw-orch-kms = { path = "../../../../../cw-orchestrator/packages/cw-orch-kms" }
 terp-orch = { workspace = true, features = ["stack"] }
+
+
+[dev-dependencies]
+# Flows live in terp-orch `suites::privacy` (shared with the unified ict-rs suite).
+terp-orch = { workspace = true, features = ["privacy"] }
+anyhow = { workspace = true }
