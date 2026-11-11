@@ -1,0 +1,40 @@
+{
+ "body": {
+  "messages": [
+   {
+    "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
+    "sender": "{{FE_UPLOADER_ADDR}}",
+    "contract": "terp1llutyfy858ehucaleypljfgut9srz34kd5c06p27hzacv0gfyjwqg0e5n9",
+    "msg": {
+     "upload_chunk": {
+      "version": 1,
+      "file": 3,
+      "index": 0,
+      "data": "H4sIAAAAAAAC/+1aWXPbyBF+168Y+2EJ2hRMijpsMXKtbMsVx9LKJWnXSW1c0BAYkLBwMJiBjvXqv6d7DmBwUIePOKmYDxIxR99fd8+ATx6RnwVf5SwOV8XVgvGdh+6TP868OaMBF5TP3cAV/CF59GRlhV0uslyQsEh9EWUpiVJYEcfegqaR782z7Mzpk08rBD4XlCdu1/xk5Xpl5cmjRyvkEdmPhIjZKkuDiKZkzi5JFpJ3GWdRkKWOYPlidc5Xz9iVnyWr56MB4czPmei7uPnnBc1pQj5xkUfp7FrPgdyXcha+F3nKy/kV1KCpQMKSKcv5PFp4wMUDNrjfqUgZdWImSMBClucsGHvDScfgSA2K/ErvwY+fgQnIQuRDskMWlPNjKc1J9h7sM7QYDZTFPO9iGqXBjKVeApbL/PZ4zuREf9JgErMUmbzfPT7wftt7eXJ45O3v/dJcBexgkaS5RHkUdiCpWSzOaY5arMFeoPD78EN9ClabqZE1FYXEwbHxh75lE/xoWsOJ2Tqc1ObFPM8uiKBn7HWeJXuXEAtpzsITOo3ZUNJc+2CJd11+s5yEFgc2k465Ecwh42pOhQuZMaE8hGyVj5CGtMeaZnhNwigFH9h+bjopzBlzLFkGNvMBGRlSt4FBzBlJMwF/ijiOwojlFT7S0BN0ZkAxIL647A9wB1I7p3HB5PbzMy8KyJj4MY0SsiimccTnjLtknwkuVyzoDP7kDCJgUdi8+F2A1pgFKe6HQVTPK1k28Dcw9LqAuN4FxPX/ESCCKKNOUbTCX0WO0b0SQocnqmQwkBLL76N2YhgvTwzj+yaGcZkYxt8gMaybxDCedMzpxDC+Y2IYS3uMPzcxrNuJYX1ZYjhiQeEzsrlOijQKszwh0yvBOHFklDB35pK/vn31mmSFAPj2icgIJe9ADsrJlHJGWMwSlooJ2d/DvNIJ6osoYJ+BW42bEIziGRKO+fKNi6dh8x1K53Ldf1TP71M93+XZOdPlcnXv5avjXau5A5aXICAjVMglCaMcHgOSRGmUFAl5KzHxll0Bd5IXEPrQuoJLYXXEiQ/iuuQENho6yvUkUvUzpSJC5oyLqvSevgDobW9jdDjDy9Gof0poGuAWCB5tMBZ0YjEAQhESzdK7w3GBBvCsnm4KMcBZ7ljUvjEgLU7fAZNLDfADkt8TkpSgh20wXkQiZRwa0L8dH/4CrFkccEJLVNXavgESyrNMj9IkK1JodUEofOQRNLPpjOMkcUab0P4ixqw4XFLrpADeR/5FADNkTJzZZL956atY/TdArWmKH5D7PpAzZz15ZJReygmQWIg5GW3h/jRLNDJAGhpCUx+lUIbASjPed8kxTZiEJRLTTiV8TheAY05Ob/P7Ke5BViUyJR6pRJnCLngFinBSQEBNGclSZk65o7W6eHBc5Zzxrw5g2br9v0O30wg/QPufBW0ZmLh95oEEXpRgyPLyFlW5T42iWhVfzwNPiszztuV1zcCaQGJ7eZ7lHgs3xlN/PBqy6dqzp3S4XYLBofkMZIO/o6aH7JCRZJwO21jb+3UHanvCP8tLTfEsg0mHe6ON4Wa4tjbeCEbTYHpHSVWspOzivnK25GHSXFvBeM0fDZ9thXR94xkL72yuLGYu+0IRYOcRJMss+Q2PD9zb2gxCf/PZ07UN/5m/sbFmCQMiGDPPYUvMlPplPN0g7SzOpjQ+gVON6+dXC5G5Db6owW6e06tfn96uAg4VeLXA+5OmRtq9cMASHjMw9gTiuK5KR/DJVSZjWcRKOnzSsSsLQy6jVm53ZxAcznojOtUULHNAoQK6SEA0C5Yu0iQfk/utBqAjKG9fCPlF5AW7feF4QEIac9aOoGs1ouPhDgmi8XrHm87cj/zhtskyJVXoKsqIokFwkjWTcTb92MhTwWXltIbPPVm/HC3/csdKtYHQgCD5mm4wWpeqK1QhacucbSSDZ1UOyPPnz02xqXL+r1EqnkoiByzJ8quh03d5MaU4grTIE3Sm/gJ+QMotIToKR00GzS5gfhawE9DVKeUZVBSxtfCpP2dBSyjQAH04qXHtEF3zw+q7lNKOokX+/HMZNxevF/dZOoNWDpcPbZDeICHk4WrcMa+YYNadFiHUwLL0WTZZQq5u4lqSk0mHG5HqrZcmGrp0sYivHLy80ctNAfep8OfEYf1Ww6aCtzPQbdS1Izf1uMhyhkFrd+RV29lqAUGiATGdnunsLN/pIWn8Kuu0JAargsTKghhVeynGV+4y+R+59DteOsAWxdqB/W4s3Yx9iY0PWSluB4cCxmNSEepL+MKzxbnRmwL/an2rDQOCxoZlvw1L0TP5rLYJZ2rqwKSth5WXIAphWbdCk4pPWT/M7jCD09PEjP8FBTFPjx+3/YFW14L6c5q/hMddk8L79d5YLgUxL7de98kU/H1WzYO0vyu7qq0f0Mmw3kYP0tBiPdjZsXNNx+ywWWRBQi0njyOftUWsumplYR2QZWIbaJ+U5alyDpzGxl3hpEx0HkGS2LlT4jXqmyBTebKrSV2GgDepyBTWkK3xNH6M3PLg4l7kkRDg2luVNgLVtdOR2g5ztbxWcWR428lh2UEHk0mttqpL5ZtaIuzkrCS0pAwHWqtqoRZNMmgUIrTpK1m1cp3grRGnV4hw9WlvAN1oNEshBb44PNiW/Qw2K4LG6oFcA6MWPVdVQwSgUvBg9+/e8e7r3aM33qu9l4ev9rwX/zjZOwa+a6P1zfXxxnALTm0oW1okL/AFmKIUKMCWFq1X2Vodbm58LJEzKRHVnH++s0yqdkX8eqZaStcymVnTNkWpUEeZ7aB1jyyPhlSdik53TdhZeusRmV7Rsg+cXoXJHonS9u5+Ge83wBlY1E45GtpfVhqRREfdanXUapAG21a6G9RmdSbZtipclVMnVmONYdxOGFh3cAahe5AFRczURdAb/BlV6uunSfPiQF5KRH8wedZyonJxIknYP8gyhICXWVYlC2vQVVdnvJpU4mCxlV8mK7f0grJb7eqXgEEunHrqUVqBWSi/Sn3SUC/OaOAk2hz6gsTulvBHa1lIjhhfgO+Z7Jp6hkaP/PSTlrnUzlrcrJqa1ns23eWcJdP4Sv2GLRURFQy6OEYTaOQaPFr3ErWmtBFP9IJG4lYOLYXrJ8TuRrZRayEogsoq2gpudoYmAQczX7By/gQU1zxdNIJdLW0D1YmWtnXxOIm/F8Ia1HuZpYACsYpEwTjYg/SwI498ebX7BP3d6xLcvk+5oHnqPDy9zVCnkD+jGFLflPm0AJmusiInnOV49R1kTL1ulc8Eu291Q33aFOeUHLw52COoukteQ4lEL0+pf4a/plgmxCm5mEfghYgTHmcXkF/IYR7NEI5EXgdt/zN9OCCdxrwmDI7zUA/UJRabWE1XvQW7XmkmN/nrjx0dSdoBMl2/kOcsp53Ebgw6RxJshpoRsHlMqlLIzUTbAVxDWknHQqVNyqSqfisBq6xMmnnOJNhO2e1bhFriq0ytzVwmn06ESGhYdDlEE8KwOa6yI4jQm1Ie+b1t/eRnOS8f4GBHi1jAsxYNW4CuJtwca/ECqOuEiXn/GDKnU8/4aGaZ2B/Uz5G1rLtSLtVmfLDs0IlrDqcfwSiI8nd4uYRqH4YlW8yKesXCTDet4nxSq6/LjNS/2W21fNArOAIzYPhrRYiygMg3Qwx6XC6Pa6elLfqnE3n0JpTgHtAsk6LJAIBs1et3B4B95Y4o67icrzrGB067tthRrMpm3zZCYiop9krttcaYdhPXQl5zqwHLkqqhHX6nbmF5HZbr1Sovy70FheP+l0SaIfL5EVeJcZ/IM7uqCCzpfM1IxHeaaLIIra1eaRqDfl5gdlhu6QVRc526nDvad3rNq19Zi03AuCA/dYs87gq/mxHRbMc6JO2pl7M9vHqsurZ/FQyoL2vaSgK15k3u6dt0QLd70YD1/RsNFjJI7M04m7QTRVchKmuj1cDaxdrQaxXHewNVv+L+VJaAgQVWfGWvawwWx38DeFaDCukxAAA="
+     }
+    },
+    "funds": []
+   }
+  ],
+  "memo": "headstash-frontend:upload",
+  "timeout_height": "0",
+  "extension_options": [],
+  "non_critical_extension_options": []
+ },
+ "auth_info": {
+  "signer_infos": [],
+  "fee": {
+   "amount": [
+    {
+     "denom": "uthiol",
+     "amount": "39617"
+    }
+   ],
+   "gas_limit": "792320",
+   "payer": "",
+   "granter": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052"
+  },
+  "tip": null
+ },
+ "signatures": []
+}

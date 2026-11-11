@@ -18,7 +18,7 @@ pub struct SecretNote {
     /// First 16 bytes of the eligible key, packed the way the claim circuit wires `epk_x`.
     pub epk_words: [u32; 4],
     pub nd: [u32; 2],
-    pub v: u32,
+    pub v: u64,
     pub fdi: u32,
 }
 
@@ -146,7 +146,7 @@ fn public_json(leaf: &PublicLeaf) -> String {
 mod tests {
     use super::*;
 
-    fn note(rseed0: u32, v: u32) -> SecretNote {
+    fn note(rseed0: u32, v: u64) -> SecretNote {
         let mut rseed = [0u32; 8];
         rseed[0] = rseed0;
         let mut epk_x = [0u8; 32];
@@ -238,7 +238,7 @@ mod tests {
                     u32::from_be_bytes(nd_bytes[0..4].try_into().unwrap()),
                     u32::from_be_bytes(nd_bytes[4..8].try_into().unwrap()),
                 ],
-                v: note["v"].as_u64().expect("v") as u32,
+                v: note["v"].as_u64().expect("v"),
                 fdi: note["fdi"].as_u64().expect("fdi") as u32,
             });
         }

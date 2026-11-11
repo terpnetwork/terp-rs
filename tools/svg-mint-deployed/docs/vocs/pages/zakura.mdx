@@ -1,0 +1,16 @@
+---
+title: Zakura
+description: House Zcash full node for the mint desk
+---
+
+# Zakura
+
+House Zakura is Docker container `zakura-lab` from `/lab/zakura-mainnet`, image `zakuracore/zakura:1.7.0` (`zakurad 1.7.0`). The archive at `/lab/zakura-mainnet/state` was upgraded in place from format 29.1.0 to 30.0.0. It is not pruned. Do not point 1.6.0 at that directory. Compose backup: `docker-compose.yml.bak-160-20261027T133049Z`.
+
+RPC is cookie auth on `127.0.0.1:8232`. The fed uses `ZCASH_PRIVATE_RPC` and `~/.terp/zakura.rpc.cookie`. Recreate regenerates the container cookie. Copy it to the host file at mode `0600` or mempool calls get an empty reply. Do not print the cookie.
+
+The fed calls `getrawmempool` and verbose `getrawtransaction`. Shielded txids are counted. They are not a checkout match and not a mint.
+
+`getblockcount` against this RPC is the private side of the tip circuit. Public tip drift hides `zec_uri` and does not close native THIOL. P2P is not published on the WAN.
+
+The product submodule pin remains `zakura-core/zakura` tag `v1.6.0`. The running image is newer than that pin.

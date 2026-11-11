@@ -1,0 +1,8 @@
+{
+  "chain_id": "morocco-1",
+  "label": "silo-cap-root",
+  "lcd": null,
+  "wasm": "artifacts/silo_cap_root.wasm",
+  "wasm_sha256": "0a599f5581c9a40be9446bbd5031bd76888cac7c179fcec35df4c632d34046e8",
+  "wasm_build": "cosmwasm/optimizer-arm64:0.17.0 (image 7881e9cece93) as toolchain, rustc 1.97.1 (repo rust-toolchain.toml) + wasm32 target, cargo build --release --locked -p silo-cap-root, in-image wasm-opt 116 -Os --strip-debug --signext-lowering; MVP+mutable-globals validated. arm64 build: NOT byte-identical to the x86 optimizer"
+}

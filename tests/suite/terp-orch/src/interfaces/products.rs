@@ -371,8 +371,12 @@ pub fn headstash_msg() -> cw_headstash::InstantiateMsg {
             &cosmwasm_std::testing::MockApi::default(),
             "existing_token".into(),
         )),
-        wavs: generate_test_wavs_proof(1),
+        wavs: Some(generate_test_wavs_proof(1)),
         circuit_id: None,
+        registration_hook: None,
+        registration_hook_gas_limit: None,
+        frontend_contract: None,
+        pauser: None,
     }
 }
 

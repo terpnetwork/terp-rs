@@ -1,8 +1,8 @@
 //! Native claim sidecar.
 //!
 //! Each submission is a Ligerito proof. This path verifies that proof against
-//! the circuit shape of the claimed leaf index, checks the MetaMask signature
-//! against the leaf key beside the proof, and inserts the nullifier once.
+//! the one circuit shape for the depth, checks the MetaMask signature against
+//! the canonical claim message and the leaf key, and inserts the nullifier once.
 //! The batch circuit keeps folding those tuples. It does not replay the
 //! Ligerito proof. The Flock circuit does not check the signature.
 
@@ -19,12 +19,16 @@ pub enum SidecarError {
     Wire(WireError),
     LeafKey,
     Root,
+    Context,
+    Message,
     Spent,
     Proof(VerifyError),
 }
 
 pub struct Sidecar {
     root: [u32; 8],
+    ctx: [u32; 8],
+    hrp: String,
     spent: HashSet<[u32; 8]>,
     accepted: Vec<BatchPayout>,
     rejected: u32,
@@ -41,9 +45,11 @@ pub struct SignedBatch {
 }
 
 impl Sidecar {
-    pub fn new(root: [u32; 8], secret: [u8; 32]) -> Self {
+    pub fn new(root: [u32; 8], ctx: [u32; 8], secret: [u8; 32], hrp: &str) -> Self {
         Self {
             root,
+            ctx,
+            hrp: hrp.to_string(),
             spent: HashSet::new(),
             accepted: Vec::new(),
             rejected: 0,
@@ -54,12 +60,12 @@ impl Sidecar {
     /// Accept one native proof whose signature recovers `leaf_epk_x`.
     ///
     /// `leaf_epk_x` is the key recovered from the holder's signature. The
-    /// proof publishes a Blake3 commitment of that key, not the key. `index`
-    /// selects the Merkle wiring the verifier rebuilds. `rseed` stays with
-    /// the holder. The batch that goes on chain does not carry the key.
+    /// proof publishes a Blake3 commitment of that key, not the key. The
+    /// leaf index stays inside the proof. `rseed` stays with the holder.
+    /// `message` must be the canonical body for this claim. The batch that
+    /// goes on chain does not carry the key.
     pub fn accept<const D: usize>(
         &mut self,
-        index: u32,
         leaf_epk_x: &[u8; 32],
         message: &[u8],
         signature: &[u8],
@@ -70,13 +76,23 @@ impl Sidecar {
             self.rejected += 1;
             return Err(SidecarError::LeafKey);
         }
-        let claim = match verify_claim::<D>(index, proved) {
+        let claim = match verify_claim::<D>(proved) {
             Ok(claim) => claim,
             Err(err) => {
                 self.rejected += 1;
                 return Err(SidecarError::Proof(err));
             }
         };
+        if claim.ctx != self.ctx {
+            self.rejected += 1;
+            return Err(SidecarError::Context);
+        }
+        let expected = crate::statement::canonical_claim_message(&claim, &self.hrp)
+            .map_err(|_| SidecarError::Message)?;
+        if message != expected.as_slice() {
+            self.rejected += 1;
+            return Err(SidecarError::Message);
+        }
         let published_key = crate::public_key_com(&proved.public)
             .ok_or(SidecarError::Proof(VerifyError::Public))?;
         if published_key != crate::key_com(&crate::tree::epk_words(leaf_epk_x)) {
@@ -107,7 +123,7 @@ impl Sidecar {
                 .map(|payout| crate::batch::Payout {
                     nullifier: bytes_to_words(&payout.nullifier),
                     destination: destination_words(&payout.destination),
-                    amount: payout.amount as u32,
+                    amount: u64::try_from(payout.amount).expect("batch amount fits u64"),
                 })
                 .collect::<Vec<_>>(),
             self.rejected,
@@ -176,6 +192,7 @@ mod tests {
         siblings[1] = [31, 32, 33, 34, 35, 36, 37, 38];
         crate::Opening {
             rseed: [rseed0, 2, 3, 4, 5, 6, 7, 8],
+            ctx: [4, 5, 6, 7, 8, 9, 10, 11],
             epk_x: crate::tree::epk_words(leaf_x),
             nd: [13, 14],
             v: 15,
@@ -188,24 +205,28 @@ mod tests {
 
     #[test]
     fn one_nullifier_seals_a_signed_batch_and_a_second_spend_is_rejected() {
-        let message = b"headstash-claim-v1";
-        let sig = sign_personal(&[4u8; 32], message).unwrap();
-        let leaf_x = recover_pubkey_x(message, &sig).unwrap();
+        let leaf_x = recover_pubkey_x(
+            b"headstash-claim-v1",
+            &sign_personal(&[4u8; 32], b"headstash-claim-v1").unwrap(),
+        )
+        .unwrap();
         let opening = opening(1, &leaf_x);
         let proved = crate::prove_claim(&opening);
         let claim = crate::derive(&opening);
-        let mut side = Sidecar::new(claim.root, [8u8; 32]);
-        side.accept::<FIXTURE_DEPTH>(opening.index, &leaf_x, message, &sig, &proved)
+        let message = crate::statement::canonical_claim_message(&claim, "terp").unwrap();
+        let sig = sign_personal(&[4u8; 32], &message).unwrap();
+        let mut side = Sidecar::new(claim.root, claim.ctx, [8u8; 32], "terp");
+        side.accept::<FIXTURE_DEPTH>(&leaf_x, &message, &sig, &proved)
             .unwrap();
         let again = side
-            .accept::<FIXTURE_DEPTH>(opening.index, &leaf_x, message, &sig, &proved)
+            .accept::<FIXTURE_DEPTH>(&leaf_x, &message, &sig, &proved)
             .unwrap_err();
         assert!(matches!(again, SidecarError::Spent));
 
-        let wrong = sign_personal(&[5u8; 32], message).unwrap();
-        let wrong_x = recover_pubkey_x(message, &wrong).unwrap();
+        let wrong = sign_personal(&[5u8; 32], &message).unwrap();
+        let wrong_x = recover_pubkey_x(&message, &wrong).unwrap();
         let mismatched = side
-            .accept::<FIXTURE_DEPTH>(opening.index, &wrong_x, message, &sig, &proved)
+            .accept::<FIXTURE_DEPTH>(&wrong_x, &message, &sig, &proved)
             .unwrap_err();
         assert!(matches!(mismatched, SidecarError::LeafKey));
 

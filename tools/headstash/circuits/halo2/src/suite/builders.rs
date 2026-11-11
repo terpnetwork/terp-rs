@@ -177,7 +177,7 @@ pub trait HeadstashBitwiseInstance {
     fn derive_esk_native(&self, sk: [u8; 32]) -> Fp {
         use crate::spec::biguint_to_fe_simple;
         let skfq = crate::circuit::gadget::secp256k1_chip::secp_fq_from_secret_be(&sk);
-        let sk_big = halo2_base::utils::fe_to_biguint(&skfq);
+        let sk_big = num_bigint::BigUint::from_bytes_le(skfq.to_repr().as_ref());
         biguint_to_fe_simple(&sk_big)
     }
 
@@ -1723,7 +1723,7 @@ pub trait HeadstashProofBuilder: HeadstashBitwiseInstance + MerkleTestDataBuilde
         let spend_info =
             SpendInfo::new(fvk, note, merkle_path).ok_or("SpendInfo creation failed")?;
 
-        let nf = note.nullifier();
+        let nf = note.nullifier_for_ctx(&[0u8; 32]);
         let cmx = ExtractedNoteCommitment::from(note.commitment());
         let mut instance =
             crate::circuit::Instance::from_parts(anchor, hv.denom(), hv.amount(), recp, nf, cmx);
@@ -1772,7 +1772,7 @@ pub trait HeadstashProofBuilder: HeadstashBitwiseInstance + MerkleTestDataBuilde
         let spend_info = SpendInfo::new(fvk, note, merkle_path).ok_or("SpendInfo failed")?;
         let mut circuit = Circuit::from_action_context_unchecked(spend_info, note);
 
-        let nf = note.nullifier();
+        let nf = note.nullifier_for_ctx(&[0u8; 32]);
         let cmx = ExtractedNoteCommitment::from(note.commitment());
         let mut instance =
             crate::circuit::Instance::from_parts(anchor, hv.denom(), hv.amount(), recp, nf, cmx);
@@ -1819,7 +1819,7 @@ pub trait HeadstashLaunchpadInstance: HeadstashBitwiseInstance + HeadstashIpfsIn
 
         let secret_be = esk.secret_bytes();
         let n = Note::from_parts(hv, recp, esk, rho, rseed).expect("note derivation");
-        let nf = n.nullifier();
+        let nf = n.nullifier_for_ctx(&[0u8; 32]);
         let cmx = ExtractedNoteCommitment::from(n.commitment());
 
         let c = SpendInfo::new(fvk, n, mp).expect("headstash claim");
@@ -1980,7 +1980,7 @@ pub trait HeadstashTestDataGenerator:
 
     //         // Compute anchor and build instance
     //         let anchor = merkle_path.root(note.commitment().into());
-    //         let nf = note.nullifier();
+    //         let nf = note.nullifier_for_ctx(&[0u8; 32]);
     //         let cmx = ExtractedNoteCommitment::from(note.commitment());
     //         let instance = crate::circuit::Instance::from_parts(
     //             anchor,
@@ -2480,8 +2480,9 @@ mod test {
     #[test]
     fn test_zkvm_circuit_public_layout() {
         // Spec for CosmwasmCircuit / CircuitFooter public inputs (build_and_write).
-        use crate::circuit::K;
-        assert_eq!(K, 18, "zkvm circuit K");
+        use crate::circuit::{Instance, K};
+        // K=19 since landing: personal-sign verify needs two GLV muls (see circuit::K).
+        assert_eq!(K, 19, "zkvm circuit K");
         // Instance wire: 6 * 32 = 168 bytes (anchor, nd, v, recp, nf, cmx).
         // Footer `i` field in ProvingKey::build_and_write is 6.
         let (circuit, instance, _, _) = HeadstashCircuitSuite::new(Mock::new("sender"))
@@ -2546,12 +2547,15 @@ mod test {
         assert_eq!(instance.to_bytes().len(), 168);
         assert_eq!(data.auth_path.leaf_index, 2);
 
-        let rebuilt = suite.generate_leaf_data(
+        let mut rebuilt = suite.generate_leaf_data(
             &partial.esk_bytes,
             &partial.token,
             partial.value,
             partial.fdi,
         );
+        // Inclusion leaves carry a random rseed (bound via claim_rseed_com);
+        // the deterministic builder's default rseed is not this leaf's.
+        rebuilt.rseed = partial.rseed;
         assert_eq!(
             partial.poseidon_leaf(),
             suite.compute_leaf_from_data_poseidon_v1(&rebuilt)

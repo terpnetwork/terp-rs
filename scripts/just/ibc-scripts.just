@@ -6,7 +6,7 @@
 # (core and heavy jobs). Their contract — exit codes, RunReport JSON, capability modes —
 # is documented in skills/tests.md; keep the two in sync.
 
-ibc := "cargo run -p dao-scripts --bin terp-ibc --"
+ibc := "cargo run -p dao-scripts --features ibc-info --bin terp-ibc --"
 
 # `offline` needs no env. `live-tx` needs MAIN_MNEMONIC and exits 2 with a JSON
 # `missing_env` finding rather than panicking.

@@ -1,0 +1,25 @@
+[package]
+name = "svg-mint-zrt"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Product ZEC wallet CLI for the SVG mint desk. Compact server required; never zec.rocks."
+
+[[bin]]
+name = "svg-mint-zrt"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+tonic = "0.11"
+orchard = { package = "zakura-orchard", version = "=1.0.0", default-features = false, features = ["circuit"] }
+zafu-wasm = { path = "/home/returniflost/src/zcli/crates/zcash-wasm", default-features = false }
+serde_json = { workspace = true }
+hex = { workspace = true }
+tokio = { version = "1", features = ["rt", "net", "time", "io-util", "sync"] }
+zync-core = { path = "/home/returniflost/src/zcli/crates/zync-core", default-features = false, features = ["client"] }
+zcash_address = { version = "0.13", default-features = false }
+zcash_protocol = { version = "0.10.6", default-features = false }
+rusqlite = { version = "0.31", features = ["bundled"] }
+dregg = { path = "../dregg" }

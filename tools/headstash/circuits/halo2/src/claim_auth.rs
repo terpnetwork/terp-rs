@@ -226,6 +226,80 @@ pub fn claim_nk(rseed_lo: pallas::Base, rseed_hi: pallas::Base) -> pallas::Base 
     )
 }
 
+/// Domain that mixes the campaign context into the nullifier key.
+pub const NK_CTX_TAG: &str = "terp-hs-nk-ctx-v1";
+
+/// Domain of the context-scoped nullifier key.
+pub const NK_TAG: &str = "terp-hs-nk-v1";
+
+/// Split a 32-byte campaign context the same way as a note random string.
+pub fn ctx_limbs(ctx: &[u8; 32]) -> (pallas::Base, pallas::Base) {
+    rseed_halves(ctx)
+}
+
+/// Context-scoped nullifier key.
+///
+/// ```text
+/// secret  = Poseidon(DST_HKDF, rseed_lo, rseed_hi)
+/// ctx_mix = Poseidon(terp-hs-nk-ctx-v1, ctx_lo, ctx_hi)
+/// nk      = Poseidon(terp-hs-nk-v1, secret, ctx_mix)
+/// ```
+///
+/// A second campaign is a different key. The unscoped [`claim_nk`] stays
+/// available for callers that are not an epoch claim.
+pub fn claim_nk_scoped(
+    rseed_lo: pallas::Base,
+    rseed_hi: pallas::Base,
+    ctx: &[u8; 32],
+) -> pallas::Base {
+    let secret = claim_nk(rseed_lo, rseed_hi);
+    let (ctx_lo, ctx_hi) = ctx_limbs(ctx);
+    let ctx_mix = poseidon3(personalization_to_fp(NK_CTX_TAG), ctx_lo, ctx_hi);
+    poseidon3(personalization_to_fp(NK_TAG), secret, ctx_mix)
+}
+
+/// UTF-8 body `headstash-claim-v1:{ctx}:{root}:{nullifier}:{destination}:{amount}`.
+///
+/// Hex fields are 64 lowercase characters. `amount` is the full decimal `u64`.
+/// This is the same string the flock statement signs.
+pub fn canonical_claim_body(
+    ctx: &[u8; 32],
+    root: &[u8; 32],
+    nullifier: &[u8; 32],
+    destination: &str,
+    amount: u64,
+) -> Vec<u8> {
+    format!(
+        "{CLAIM_PREFIX}{}:{}:{}:{destination}:{amount}",
+        hex_encode(ctx),
+        hex_encode(root),
+        hex_encode(nullifier),
+    )
+    .into_bytes()
+}
+
+/// Reduced EIP-191 keccak of a canonical claim body.
+pub fn canonical_challenge(body: &[u8]) -> [u8; 32] {
+    reduce_mod_n(&eip191_keccak(body))
+}
+
+/// Sign the canonical body. `e` is [`canonical_challenge`]. The secret is not a witness.
+#[cfg(feature = "host-crypto")]
+pub fn sign_canonical_body(secret_be: &[u8; 32], body: &[u8]) -> ([u8; 32], [u8; 32], [u8; 32]) {
+    use secp256k1::{Message, Secp256k1, SecretKey};
+    let digest = eip191_keccak(body);
+    let e_be = reduce_mod_n(&digest);
+    let secp = Secp256k1::new();
+    let sk = SecretKey::from_byte_array(*secret_be).expect("eligible key");
+    let sig = secp.sign_ecdsa(Message::from_digest(digest), &sk);
+    let compact = sig.serialize_compact();
+    let mut r_be = [0u8; 32];
+    let mut s_be = [0u8; 32];
+    r_be.copy_from_slice(&compact[..32]);
+    s_be.copy_from_slice(&compact[32..]);
+    (e_be, r_be, s_be)
+}
+
 /// EIP-191 challenge reduced modulo secp256k1 `n`, as 32 big-endian bytes.
 pub fn challenge_scalar_be(body: &[u8; 32]) -> [u8; 32] {
     reduce_mod_n(&claim_challenge(body))
@@ -419,6 +493,69 @@ mod tests {
     }
 
     #[test]
+    fn epoch_claim_canonical_body_matches_flock() {
+        let ctx = [0xab; 32];
+        let root = [0x11; 32];
+        let nullifier = [0x22; 32];
+        let destination = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k";
+        let amount = u64::from(u32::MAX) + 9;
+        let body = canonical_claim_body(&ctx, &root, &nullifier, destination, amount);
+        let text = String::from_utf8(body.clone()).unwrap();
+        assert!(text.starts_with("headstash-claim-v1:"));
+        assert!(text.ends_with(&format!(":{destination}:{amount}")));
+        assert_eq!(text.matches(':').count(), 5);
+        let challenge = canonical_challenge(&body);
+        assert_ne!(challenge, claim_challenge(&[0xab; 32]));
+    }
+
+    #[test]
+    fn epoch_claim_scoped_nullifier_changes_with_context() {
+        let (lo, hi) = rseed_halves(&[9u8; 32]);
+        let unscoped = claim_nk(lo, hi);
+        let ctx_a = [1u8; 32];
+        let mut ctx_b = ctx_a;
+        ctx_b[31] = 2;
+        let scoped_a = claim_nk_scoped(lo, hi, &ctx_a);
+        assert_ne!(scoped_a, unscoped);
+        assert_ne!(scoped_a, claim_nk_scoped(lo, hi, &ctx_b));
+        assert_eq!(scoped_a, claim_nk_scoped(lo, hi, &ctx_a));
+        assert_eq!(ctx_limbs(&ctx_a).0, rseed_halves(&ctx_a).0);
+    }
+
+    #[test]
+    fn epoch_claim_signature_opens_the_canonical_body() {
+        let secp = Secp256k1::new();
+        let sk = SecretKey::from_byte_array([0x21; 32]).unwrap();
+        let pk = PublicKey::from_secret_key(&secp, &sk);
+        let body = canonical_claim_body(
+            &[3u8; 32],
+            &[4u8; 32],
+            &[5u8; 32],
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k",
+            15,
+        );
+        let (e_be, r_be, s_be) = sign_canonical_body(&[0x21; 32], &body);
+        assert_eq!(e_be, canonical_challenge(&body));
+        let digest = eip191_keccak(&body);
+        let mut compact = [0u8; 64];
+        compact[..32].copy_from_slice(&r_be);
+        compact[32..].copy_from_slice(&s_be);
+        let sig = secp256k1::ecdsa::Signature::from_compact(&compact).unwrap();
+        secp.verify_ecdsa(Message::from_digest(digest), &sig, &pk)
+            .expect("canonical personal_sign verifies");
+        let other = canonical_claim_body(
+            &[3u8; 32],
+            &[4u8; 32],
+            &[6u8; 32],
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k",
+            15,
+        );
+        assert!(
+            secp.verify_ecdsa(Message::from_digest(eip191_keccak(&other)), &sig, &pk)
+                .is_err()
+        );
+    }
+
     fn nullifier_is_unique_per_leaf_preimage() {
         let x = pallas::Base::from(3u64);
         let y = pallas::Base::from(5u64);

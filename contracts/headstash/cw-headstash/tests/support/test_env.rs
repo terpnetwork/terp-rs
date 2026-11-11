@@ -113,8 +113,8 @@ impl TestEnv {
             .map(|i| app.api().addr_make(&format!("test_account_{}", i)))
             .collect();
 
-        // Fund test accounts
-        for account in &test_accounts {
+        // Fund owner (factory-funding tests send from owner) and test accounts
+        for account in std::iter::once(&owner).chain(test_accounts.iter()) {
             app.init_modules(|router, _, storage| {
                 router
                     .bank
@@ -258,7 +258,11 @@ pub fn mock_headstash_instantiate_msg() -> HeadstashInstantiateMsg {
         token_strategy: mock_token_strategy_new(),
         distro_hash_domain: Default::default(),
         genesis_label: None,
-        wavs: mock_wavs_proof(),
+        wavs: Some(mock_wavs_proof()),
         circuit_id: None,
+        registration_hook: None,
+        registration_hook_gas_limit: None,
+        frontend_contract: None,
+        pauser: None,
     }
 }

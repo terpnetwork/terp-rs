@@ -340,6 +340,8 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
@@ -356,6 +358,9 @@ jobs:
       - name: Install just
         uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2
 
+      - name: Prefetch crates (offline steps below)
+        run: cargo fetch --locked
+
       - name: Preflight offline
         run: just ibc scripts-ibc-preflight offline
 
@@ -368,7 +373,7 @@ jobs:
       - name: Assert validate ok via jq
         run: |
           set -euo pipefail
-          cargo run -p terp-scripts --bin terp-ibc --quiet -- validate --format json \
+          cargo run -p dao-scripts --features ibc-info --bin terp-ibc --quiet -- validate --format json \
             | tee /tmp/run_report.json
           python3 - <<'PY'
           import json
@@ -396,6 +401,8 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
@@ -445,6 +452,8 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
@@ -503,6 +512,8 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
@@ -529,6 +540,8 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
@@ -543,6 +556,9 @@ jobs:
 
       - name: Install just
         uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2
+
+      - name: Prefetch crates (offline steps below)
+        run: cargo fetch --locked && cargo fetch --locked --manifest-path crates/wasm-bindgen/norick-wasm/Cargo.toml
 
       - name: All non-ignored tests in terp-scripts
         run: |
@@ -563,6 +579,8 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
@@ -594,6 +612,8 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
@@ -625,6 +645,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      statuses: write # wip: true posts a commit status
     steps:
       - name: Semantic pull request
         uses: amannn/action-semantic-pull-request@e9fabac35e210fea40ca5b14c0da95a099eff26f # v5.4.0
@@ -657,6 +678,8 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
 
       - name: Refuse a publish from this tree
         env:

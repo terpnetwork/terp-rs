@@ -1,0 +1,169 @@
+{
+ "body": {
+  "messages": [
+   {
+    "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
+    "sender": "terp16xmf57fr64n9ajux0up3n6ypytct5zggj5d05r",
+    "contract": "terp1armcr7lme0ac3l59dx6ne3et3pe9mfyv57d8pc9m5tyxtzm64dpq9nnwpp",
+    "msg": {
+     "propose": {
+      "msg": {
+       "propose": {
+        "title": "Headstash v0.0.1 initial dry run: terpy + thioly",
+        "description": "Initial headstash dry run (v0.0.1). Creates two tokenfactory tokens owned by the Foundation DAO, terpy and thioly, mints exactly the airdrop allocation of each (66456669000000 base units, 6 decimals), and deploys one cw-headstash per token with the identical airdrop set (98841 notes, cutoff 44444444, vk_id 3). Admin, owner and pauser of both: this DAO. Claims open after x/gov stores the circuit and DAO proposal 2 binds it. Last, the DAO hands the tokenfactory admin of both denoms to terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw (the all-zero address, no key), so neither supply nor metadata can change again.",
+        "msgs": [
+         {
+          "stargate": {
+           "type_url": "/osmosis.tokenfactory.v1beta1.MsgCreateDenom",
+           "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSBXRlcnB5"
+          }
+         },
+         {
+          "stargate": {
+           "type_url": "/osmosis.tokenfactory.v1beta1.MsgSetDenomMetadata",
+           "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncShQIKQXRlcnB5OiBoZWFkc3Rhc2ggdjAuMC4xIGluaXRpYWwgZHJ5IHJ1biAoVGVycCBOZXR3b3JrIEZvdW5kYXRpb24pElEKTWZhY3RvcnkvdGVycDE0dzJxdmE2ZHg2d2NzbXE1ZnZwbGg3Y3I3bnZwdGVqem55dnBlNWhwNW10eXFoeHhqYW1zejNrdzJ3L3RlcnB5EAASCQoFdGVycHkQBhpNZmFjdG9yeS90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncvdGVycHkiBXRlcnB5KgV0ZXJweTIFVEVSUFk="
+          }
+         },
+         {
+          "stargate": {
+           "type_url": "/osmosis.tokenfactory.v1beta1.MsgMint",
+           "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSXwpNZmFjdG9yeS90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncvdGVycHkSDjY2NDU2NjY5MDAwMDAwGj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3Mnc="
+          }
+         },
+         {
+          "wasm": {
+           "instantiate2": {
+            "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+            "code_id": 105,
+            "label": "headstash-2026-1-terpy",
+            "msg": "eyJnZW5lc2lzX3Jvb3QiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPSIsImdlbmVzaXNfbGFiZWwiOiJoZWFkc3Rhc2gtMjAyNi0xLXRlcnB5IiwidG9rZW5fc3RyYXRlZ3kiOnsiZXhpc3RpbmdfZnVuZ2libGUiOnsicHJvb2YiOiJuR1Rjc0xNSzY0TlVuZ0JFcTQxUjRPd2s2SWlYNi9JZHBXb3g5OGtQMkE4PSIsInJhdyI6ImZhY3RvcnkvdGVycDE0dzJxdmE2ZHg2d2NzbXE1ZnZwbGg3Y3I3bnZwdGVqem55dnBlNWhwNW10eXFoeHhqYW1zejNrdzJ3L3RlcnB5In19LCJ3YXZzIjpudWxsLCJyZWdpc3RyYXRpb25faG9vayI6bnVsbCwicmVnaXN0cmF0aW9uX2hvb2tfZ2FzX2xpbWl0IjpudWxsLCJwYXVzZXIiOiJ0ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MnciLCJmcm9udGVuZF9jb250cmFjdCI6bnVsbH0=",
+            "funds": [
+             {
+              "denom": "factory/terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w/terpy",
+              "amount": "1"
+             }
+            ],
+            "salt": "c2WPXjvl1zZDgplxgztVXuqkf3/myk7sNVWSBv+JA8k="
+           }
+          }
+         },
+         {
+          "wasm": {
+           "execute": {
+            "contract_addr": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q",
+            "msg": "eyJzZXRfZXBvY2hfY2FtcGFpZ24iOnsiY2FtcGFpZ24iOnsiY3R4IjoiSWlabDh2dktvOTQwUktqNTJ6Um1HY2dydFNsNCtuYkxSWUhpQlRHMExSRT0iLCJiYWNrZW5kIjoiaGFsbzIiLCJjdXRvZmZfaGVpZ2h0Ijo0NDQ0NDQ0NCwiYmVjaDMyX2hycCI6InRlcnAiLCJkZW5vbSI6Im5HVGNzTE1LNjROVW5nQkVxNDFSNE93azZJaVg2L0lkcFdveDk4a1AyQTg9IiwiYW1vdW50cyI6W3siYW1vdW50IjoxMDAwMDAwLCJjYXAiOjY0OTF9LHsiYW1vdW50IjoyMDAwMDAwLCJjYXAiOjEyNTY5fSx7ImFtb3VudCI6NTAwMDAwMCwiY2FwIjoxMDE1MH0seyJhbW91bnQiOjEwMDAwMDAwLCJjYXAiOjY5NDB9LHsiYW1vdW50IjoyMDAwMDAwMCwiY2FwIjo2Mzg3fSx7ImFtb3VudCI6NTAwMDAwMDAsImNhcCI6NjIxOX0seyJhbW91bnQiOjEwMDAwMDAwMCwiY2FwIjo1MDgxfSx7ImFtb3VudCI6MjAwMDAwMDAwLCJjYXAiOjE1MzYzfSx7ImFtb3VudCI6NTAwMDAwMDAwLCJjYXAiOjgwMzF9LHsiYW1vdW50IjoxMDAwMDAwMDAwLCJjYXAiOjc5Nzh9LHsiYW1vdW50IjoyMDAwMDAwMDAwLCJjYXAiOjU5NTZ9LHsiYW1vdW50Ijo1MDAwMDAwMDAwLCJjYXAiOjc2NzZ9XSwicmVzZXJ2ZWQiOltdLCJ0cnVzdGVkIjpbIkU0NU1kZGt4WlZzcTROOXIvd25JOFZHUVk3Wkl0V3R3UHpNbEVhK0hnWms9Il0sInRydXN0ZWRfdmVyaWZ5X3RocmVzaG9sZCI6MSwidHJ1c3RlZF9zaWduX3RocmVzaG9sZCI6MSwibWF4X3Jvd3MiOjI1LCJhbGxvY2F0aW9uX3Jvb3QiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPSIsInJvb3RfaWQiOjAsInZrX2lkIjozLCJ2a19oYXNoIjoiTk5FVU45bFhWVTlBQ0RkOTdPWDZ3UEJINE9uTUFTMFZzOUNVU0tiTVU1Zz0iLCJzd2VlcF9yZWNpcGllbnQiOiIiLCJidXJuX3VuY2xhaW1lZCI6dHJ1ZSwicmVnaXN0cmF0aW9uIjp7ImVsaWdpYmlsaXR5X3Jvb3QiOiJ4dit1RXZ3K1dxZjBDazliUmVGQnNZTml2YkJxZVl6RndqU3JXMUVGbzdBPSIsImVsaWdpYmlsaXR5X2RlcHRoIjoxNywibWluX2Fub255bWl0eV9zZXQiOjEsImFuY2hvcl9zdGFydF9oZWlnaHQiOjEsImFuY2hvcl9pbnRlcnZhbCI6MzQzMH19fX0=",
+            "funds": []
+           }
+          }
+         },
+         {
+          "bank": {
+           "send": {
+            "to_address": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q",
+            "amount": [
+             {
+              "denom": "factory/terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w/terpy",
+              "amount": "66456668999999"
+             }
+            ]
+           }
+          }
+         },
+         {
+          "stargate": {
+           "type_url": "/osmosis.tokenfactory.v1beta1.MsgCreateDenom",
+           "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSBnRoaW9seQ=="
+          }
+         },
+         {
+          "stargate": {
+           "type_url": "/osmosis.tokenfactory.v1beta1.MsgSetDenomMetadata",
+           "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSjAIKQnRoaW9seTogaGVhZHN0YXNoIHYwLjAuMSBpbml0aWFsIGRyeSBydW4gKFRlcnAgTmV0d29yayBGb3VuZGF0aW9uKRJSCk5mYWN0b3J5L3RlcnAxNHcycXZhNmR4Nndjc21xNWZ2cGxoN2NyN252cHRlanpueXZwZTVocDVtdHlxaHh4amFtc3oza3cydy90aGlvbHkQABIKCgZ0aGlvbHkQBhpOZmFjdG9yeS90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncvdGhpb2x5IgZ0aGlvbHkqBnRoaW9seTIGVEhJT0xZ"
+          }
+         },
+         {
+          "stargate": {
+           "type_url": "/osmosis.tokenfactory.v1beta1.MsgMint",
+           "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSYApOZmFjdG9yeS90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncvdGhpb2x5Eg42NjQ1NjY2OTAwMDAwMBo/dGVycDE0dzJxdmE2ZHg2d2NzbXE1ZnZwbGg3Y3I3bnZwdGVqem55dnBlNWhwNW10eXFoeHhqYW1zejNrdzJ3"
+          }
+         },
+         {
+          "wasm": {
+           "instantiate2": {
+            "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+            "code_id": 105,
+            "label": "headstash-2026-1-thioly",
+            "msg": "eyJnZW5lc2lzX3Jvb3QiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPSIsImdlbmVzaXNfbGFiZWwiOiJoZWFkc3Rhc2gtMjAyNi0xLXRoaW9seSIsInRva2VuX3N0cmF0ZWd5Ijp7ImV4aXN0aW5nX2Z1bmdpYmxlIjp7InByb29mIjoiQU90VjBFRFdOcSt1bVRoOVY5dHZMSEw5c0RQU0h3V2lEeURleVp3S2loYz0iLCJyYXciOiJmYWN0b3J5L3RlcnAxNHcycXZhNmR4Nndjc21xNWZ2cGxoN2NyN252cHRlanpueXZwZTVocDVtdHlxaHh4amFtc3oza3cydy90aGlvbHkifX0sIndhdnMiOm51bGwsInJlZ2lzdHJhdGlvbl9ob29rIjpudWxsLCJyZWdpc3RyYXRpb25faG9va19nYXNfbGltaXQiOm51bGwsInBhdXNlciI6InRlcnAxNHcycXZhNmR4Nndjc21xNWZ2cGxoN2NyN252cHRlanpueXZwZTVocDVtdHlxaHh4amFtc3oza3cydyIsImZyb250ZW5kX2NvbnRyYWN0IjpudWxsfQ==",
+            "funds": [
+             {
+              "denom": "factory/terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w/thioly",
+              "amount": "1"
+             }
+            ],
+            "salt": "6T5ZUhUD3s6Q+FiWB6/E9/TeFwKecA7X3Zu18+ezScE="
+           }
+          }
+         },
+         {
+          "wasm": {
+           "execute": {
+            "contract_addr": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7",
+            "msg": "eyJzZXRfZXBvY2hfY2FtcGFpZ24iOnsiY2FtcGFpZ24iOnsiY3R4IjoiT0VVdlVTRmhnSGFuWTBBbTNqQWxEOFBQU0NjQTFmMUZkWStBUldBSU9EZz0iLCJiYWNrZW5kIjoiaGFsbzIiLCJjdXRvZmZfaGVpZ2h0Ijo0NDQ0NDQ0NCwiYmVjaDMyX2hycCI6InRlcnAiLCJkZW5vbSI6IkFPdFYwRURXTnErdW1UaDlWOXR2TEhMOXNEUFNId1dpRHlEZXlad0tpaGM9IiwiYW1vdW50cyI6W3siYW1vdW50IjoxMDAwMDAwLCJjYXAiOjY0OTF9LHsiYW1vdW50IjoyMDAwMDAwLCJjYXAiOjEyNTY5fSx7ImFtb3VudCI6NTAwMDAwMCwiY2FwIjoxMDE1MH0seyJhbW91bnQiOjEwMDAwMDAwLCJjYXAiOjY5NDB9LHsiYW1vdW50IjoyMDAwMDAwMCwiY2FwIjo2Mzg3fSx7ImFtb3VudCI6NTAwMDAwMDAsImNhcCI6NjIxOX0seyJhbW91bnQiOjEwMDAwMDAwMCwiY2FwIjo1MDgxfSx7ImFtb3VudCI6MjAwMDAwMDAwLCJjYXAiOjE1MzYzfSx7ImFtb3VudCI6NTAwMDAwMDAwLCJjYXAiOjgwMzF9LHsiYW1vdW50IjoxMDAwMDAwMDAwLCJjYXAiOjc5Nzh9LHsiYW1vdW50IjoyMDAwMDAwMDAwLCJjYXAiOjU5NTZ9LHsiYW1vdW50Ijo1MDAwMDAwMDAwLCJjYXAiOjc2NzZ9XSwicmVzZXJ2ZWQiOltdLCJ0cnVzdGVkIjpbIkU0NU1kZGt4WlZzcTROOXIvd25JOFZHUVk3Wkl0V3R3UHpNbEVhK0hnWms9Il0sInRydXN0ZWRfdmVyaWZ5X3RocmVzaG9sZCI6MSwidHJ1c3RlZF9zaWduX3RocmVzaG9sZCI6MSwibWF4X3Jvd3MiOjI1LCJhbGxvY2F0aW9uX3Jvb3QiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPSIsInJvb3RfaWQiOjAsInZrX2lkIjozLCJ2a19oYXNoIjoiTk5FVU45bFhWVTlBQ0RkOTdPWDZ3UEJINE9uTUFTMFZzOUNVU0tiTVU1Zz0iLCJzd2VlcF9yZWNpcGllbnQiOiIiLCJidXJuX3VuY2xhaW1lZCI6dHJ1ZSwicmVnaXN0cmF0aW9uIjp7ImVsaWdpYmlsaXR5X3Jvb3QiOiJ4dit1RXZ3K1dxZjBDazliUmVGQnNZTml2YkJxZVl6RndqU3JXMUVGbzdBPSIsImVsaWdpYmlsaXR5X2RlcHRoIjoxNywibWluX2Fub255bWl0eV9zZXQiOjEsImFuY2hvcl9zdGFydF9oZWlnaHQiOjEsImFuY2hvcl9pbnRlcnZhbCI6MzQzMH19fX0=",
+            "funds": []
+           }
+          }
+         },
+         {
+          "bank": {
+           "send": {
+            "to_address": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7",
+            "amount": [
+             {
+              "denom": "factory/terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w/thioly",
+              "amount": "66456668999999"
+             }
+            ]
+           }
+          }
+         },
+         {
+          "stargate": {
+           "type_url": "/osmosis.tokenfactory.v1beta1.MsgChangeAdmin",
+           "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSTWZhY3RvcnkvdGVycDE0dzJxdmE2ZHg2d2NzbXE1ZnZwbGg3Y3I3bnZwdGVqem55dnBlNWhwNW10eXFoeHhqYW1zejNrdzJ3L3RlcnB5Git0ZXJwMXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxNWZmbmR3"
+          }
+         },
+         {
+          "stargate": {
+           "type_url": "/osmosis.tokenfactory.v1beta1.MsgChangeAdmin",
+           "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSTmZhY3RvcnkvdGVycDE0dzJxdmE2ZHg2d2NzbXE1ZnZwbGg3Y3I3bnZwdGVqem55dnBlNWhwNW10eXFoeHhqYW1zejNrdzJ3L3RoaW9seRordGVycDFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcTVmZm5kdw=="
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    "funds": []
+   }
+  ],
+  "memo": "headstash v0.0.1 dao prop 1",
+  "timeout_height": "0",
+  "extension_options": [],
+  "non_critical_extension_options": []
+ },
+ "auth_info": {
+  "signer_infos": [],
+  "fee": {
+   "amount": [
+    {
+     "denom": "uthiol",
+     "amount": "82127"
+    }
+   ],
+   "gas_limit": "1642521",
+   "payer": "",
+   "granter": ""
+  }
+ },
+ "signatures": []
+}

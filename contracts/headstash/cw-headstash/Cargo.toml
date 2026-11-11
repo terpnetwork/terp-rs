@@ -9,6 +9,9 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = []
 library = []
+# Pre-v1 paths (ProcessHeadstash, bridge, epoch batches, Mint/Burn, sudo settlement).
+# OFF for the v0.0.1 mainnet build; tests only.
+legacy = []
 interface = ["dep:cw-orch"]
 zk-api = ["cosmwasm-std/zk"]
 
@@ -19,9 +22,14 @@ ark-ec   = { workspace = true }
 ark-ff  = { workspace = true }
 ark-serialize = { workspace = true }
 cosmwasm-schema  = { workspace = true }
-cosmwasm-std = { workspace = true, features = ["cosmwasm_2_1", "stargate", "zk"] }
+# Guest wasm: no cosmwasm-std `zk` feature (avoids env.proof_instance_verify import
+# missing on stock wasmd). Bridge mint uses pure mock_verify; claim proofs need zk-host.
+# cosmwasm_2_1 required for BLS host imports (hash_to_g2) used by WAVS PoP on instantiate.
+# Do not enable `zk` (proof_instance_verify) unless chain wasmvm exposes it.
+cosmwasm-std = { workspace = true, features = ["cosmwasm_2_1", "stargate", "staking", "zk"] }
 cw-orch = { workspace = true, optional = true }
 cw-ownable = { workspace = true }
+cw2 = { workspace = true }
 cw-storage-plus  = { workspace = true }
 ff = { workspace = true }
 getrandom = { workspace = true, features = ["custom"] }
@@ -39,8 +47,10 @@ zk-headstash = { workspace = true }
 
 [dev-dependencies]
 blake3 = { workspace = true }
+ed25519-zebra = { workspace = true }
 cw-headstash-manifold = { workspace = true }
 cw-multi-test = { workspace = true }
+k256 = { workspace = true, features = ["ecdsa"] }
 
 [[example]]
 name = "print_wavs"

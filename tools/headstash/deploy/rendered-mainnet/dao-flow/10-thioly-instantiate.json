@@ -1,0 +1,15 @@
+{
+ "genesis_root": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+ "genesis_label": "headstash-2026-1-thioly",
+ "token_strategy": {
+  "existing_fungible": {
+   "proof": "AOtV0EDWNq+umTh9V9tvLHL9sDPSHwWiDyDeyZwKihc=",
+   "raw": "factory/terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w/thioly"
+  }
+ },
+ "wavs": null,
+ "registration_hook": null,
+ "registration_hook_gas_limit": null,
+ "pauser": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+ "frontend_contract": null
+}

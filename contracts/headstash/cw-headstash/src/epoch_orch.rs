@@ -6,13 +6,15 @@
 //! This runner does not start Docker and does not verify a Halo2 proof.
 
 use crate::epoch::{
-    ALGO_ACCEPTED, ALGO_PENDING, CHAIN_UID, EpochPayout, HashMerchantSudoMsg,
-    HashMerchantSudoPayload, PublicOpen, accepted_root, attested_root, pedersen_commit, root_b64,
+    ALGO_ACCEPTED, CHAIN_UID, EpochPayout, HashMerchantSudoMsg, HashMerchantSudoPayload, root_b64,
 };
+#[cfg(feature = "legacy")]
+use crate::epoch::{ALGO_PENDING, PublicOpen, accepted_root, attested_root, pedersen_commit};
 use crate::interface::HeadstashContract;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+#[cfg(feature = "legacy")]
+use crate::msg::QueryMsg;
+use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::tokenfactory::HeadstashTokenObject;
-use crate::wavs::generate_test_wavs_proof;
 use cosmwasm_std::testing::MockApi;
 use cosmwasm_std::{Binary, Coin, Uint256};
 use cw_orch::prelude::*;
@@ -30,6 +32,7 @@ fn payout(byte: u8, dest: &str, amount: u64) -> EpochPayout {
             .proof,
         destination: dest.into(),
         amount,
+        anchor: Binary::default(),
     }
 }
 
@@ -60,8 +63,12 @@ fn deploy(mock: &Mock) -> HeadstashContract<Mock> {
             token_strategy: crate::tokenfactory::TokenStrategy::ExistingFungible(
                 HeadstashTokenObject::new(&cosmwasm_std::testing::MockApi::default(), DENOM.into()),
             ),
-            wavs: generate_test_wavs_proof(1),
+            wavs: None, // WAVS disabled (mainnet config)
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
         },
         Some(&mock.sender_addr()),
         &[Coin::new(1_000u64, DENOM)],
@@ -86,6 +93,31 @@ fn wasm_sudo(
 mod tests {
     use super::*;
 
+    /// v0.0.1 (no `legacy` feature) compiles the epoch-batch path and sudo out on purpose
+    /// (b9a91aa); the mainnet surface must refuse both.
+    #[cfg(not(feature = "legacy"))]
+    #[test]
+    fn v001_build_refuses_sudo_and_epoch_batches() {
+        let mock = Mock::new("creator");
+        let dest = MockApi::default().addr_make("dest");
+        let hs = deploy(&mock);
+        let addr = hs.address().expect("addr");
+        let err = wasm_sudo(&mock, &addr, &sudo_msg(ALGO_ACCEPTED, &[9u8; 32], 2)).unwrap_err();
+        assert!(err.contains(crate::DISABLED_IN_BUILD), "{err}");
+        // ApplyAcceptedBatch is compiled out of ExecuteMsg itself in v0.0.1 (keeps `execute` under the
+        // arm64 singlepass function budget): the message cannot even be parsed.
+        let raw = serde_json::json!({"apply_accepted_batch": {
+            "allocation_root": Binary::from(vec![0u8; 32]), "root_id": 0,
+            "rows": [payout(1, dest.as_str(), 15)], "vk_hash": Binary::default()}});
+        let err = cosmwasm_std::from_json::<ExecuteMsg>(serde_json::to_vec(&raw).unwrap())
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("unknown variant"), "{err}");
+        assert_eq!(mock.query_balance(&dest, DENOM).unwrap(), Uint256::zero());
+    }
+
+    /// The epoch-batch flow only exists in the `legacy` build (b9a91aa); run it there.
+    #[cfg(feature = "legacy")]
     #[test]
     fn mock_chain_pays_once_and_keeps_the_paths_apart() {
         let mock = Mock::new("creator");
@@ -117,6 +149,7 @@ mod tests {
                 allocation_root: root.clone(),
                 root_id: 0,
                 rows: vec![payout(1, dest.as_str(), 15)],
+                vk_hash: Binary::default(),
             },
             &[],
         );
@@ -140,6 +173,7 @@ mod tests {
                 allocation_root: root.clone(),
                 root_id: 0,
                 rows: vec![payout(2, dest.as_str(), 15)],
+                vk_hash: Binary::default(),
             },
             &[],
         );
@@ -151,6 +185,7 @@ mod tests {
                 allocation_root: root.clone(),
                 root_id: 0,
                 rows: vec![row],
+                vk_hash: Binary::default(),
             },
             &[],
         )
@@ -169,6 +204,7 @@ mod tests {
                 allocation_root: root.clone(),
                 root_id: 0,
                 rows: vec![payout(1, dest.as_str(), 15)],
+                vk_hash: Binary::default(),
             },
             &[],
         );
@@ -211,6 +247,7 @@ mod tests {
                 allocation_root: root,
                 root_id: 0,
                 rows: vec![public_row],
+                vk_hash: Binary::default(),
             },
             &[],
         );

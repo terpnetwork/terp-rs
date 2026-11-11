@@ -1,5 +1,6 @@
 config.json
-data/
+data/*
+!data/infra-codes.json
 __pycache__/
 *.pyc
 *.env

@@ -27,6 +27,8 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
@@ -46,4 +48,5 @@ jobs:
             echo "::notice::Path patches need the monorepo checkout. clippy runs under act from crates/terp-rs."
             exit 0
           fi
+          cargo fetch --locked
           cargo clippy -p terp-scripts --tests --offline

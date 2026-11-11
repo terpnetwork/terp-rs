@@ -8,16 +8,21 @@
 //! - The leaf row reads `rseed_com` plus the private key and allocation.
 //!   A second string is a different leaf. The amount is bound in the next
 //!   row and is the only allocation word that is public.
-//! - Each Merkle level hashes `left ‖ right` with the running digest on the
-//!   side the public index bit selects. The last output is the public root.
+//! - Each Merkle level hashes `left ‖ right`. The index bit is a witness.
+//!   A select gate swaps the running digest and the sibling, so every leaf
+//!   position is the same circuit shape. The last output is the public root.
+//! - The nullifier compression is `rseed ‖ ctx`. `ctx` is a public input.
 //!
 //! A proof is a Ligerito proof of this circuit. The nullifier is not a free
 //! witness: it is the compression output, and the same string is what the
 //! leaf commits to.
 
-use flock_core::circuit::builder::{CircuitBuilder, GateType, SlotId, SlotWitness};
+use std::sync::Arc;
+
+use flock_core::circuit::builder::{CircuitBuilder, GateType, SlotId, SlotWitness, Wire};
+use flock_core::element_r1cs::ElementTableBuilder;
 use flock_core::field::F128;
-use flock_core::schedule::TableType;
+use flock_core::schedule::{IoWord, TableType};
 use flock_hash::blake3_compress;
 
 use flock_prover::r1cs_hashes::blake3::{Compression, build_block_r1cs, io_schema};
@@ -52,30 +57,34 @@ pub(crate) const FLAG_PAYOUT_COM: u32 = 9;
 pub(crate) const FLAG_PAYOUT_BIND: u32 = 10;
 
 /// Private opening of one leaf, plus the siblings for `D` levels.
-/// `destination` is the payout address (20 bytes, five words). `v` is both
-/// the leaf amount and the public payout amount.
+/// `destination` is the payout address (20 bytes, five words). `v` is the
+/// payout amount in base units. Both 32-bit limbs are the public amount word.
 ///
-/// `D` is [`DEPTH`] for the real set. The index bits are wired when the
-/// circuit is built, so two leaf positions are two circuit shapes.
+/// `D` is [`DEPTH`] for the real set. The index bits are witnesses. Two leaf
+/// positions share one circuit shape.
+#[derive(Clone, Copy)]
 pub struct Opening<const D: usize> {
     pub rseed: [u32; 8],
+    /// Campaign context, eight little-endian words of the 32 public bytes.
+    pub ctx: [u32; 8],
     pub epk_x: [u32; 4],
     pub nd: [u32; 2],
-    pub v: u32,
+    pub v: u64,
     pub fdi: u32,
-    /// Leaf position. The circuit shape is this index's path.
+    /// Leaf position. A witness. It is not a public input.
     pub index: u32,
     pub siblings: [[u32; 8]; D],
     pub destination: [u32; 5],
 }
 
-/// Public claim: tree root, nullifier, and the payout the leaf amount pays.
+/// Public claim: campaign context, tree root, nullifier, and the payout.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Claim {
+    pub ctx: [u32; 8],
     pub root: [u32; 8],
     pub nullifier: [u32; 8],
     pub destination: [u32; 5],
-    pub amount: u32,
+    pub amount: u64,
 }
 
 struct Blake3Gate {
@@ -111,6 +120,113 @@ impl GateType for Blake3Gate {
     }
 }
 
+/// Conditional swap in GF(2^128).
+///
+/// `bit` is 0 or 1. `left = a` and `right = b` when the bit is clear.
+/// `left = b` and `right = a` when the bit is set. The check output is
+/// `bit + bit²`, which is zero exactly for those two field elements.
+struct SelectGate {
+    ty: Arc<flock_core::element_r1cs::ElementTableType>,
+}
+
+impl SelectGate {
+    fn new() -> Self {
+        let one = F128::ONE;
+        let mut b = ElementTableBuilder::new(3);
+        b.free_wire(0)
+            .free_wire(1)
+            .free_wire(2)
+            .mult(3, 0, 0)
+            .linear(4, &[(0, one), (3, one)])
+            .mult_lin(5, &[(0, one)], &[(1, one), (2, one)])
+            .linear(6, &[(1, one), (5, one)])
+            .linear(7, &[(2, one), (5, one)]);
+        Self {
+            ty: Arc::new(b.build().expect("select block")),
+        }
+    }
+}
+
+impl GateType for SelectGate {
+    type Row = [F128; 8];
+    type Hint = ();
+
+    fn table(&self) -> TableType {
+        TableType::element(self.ty.clone()).with_io_schema(vec![
+            IoWord::input(0),
+            IoWord::input(1),
+            IoWord::input(2),
+            IoWord::output(4),
+            IoWord::output(6),
+            IoWord::output(7),
+        ])
+    }
+
+    fn eval(&self, inputs: &[F128], _hint: &(), outputs: &mut Vec<F128>) -> Self::Row {
+        let bit = inputs[0];
+        let a = inputs[1];
+        let sibling = inputs[2];
+        let bit_sq = bit * bit;
+        let check = bit + bit_sq;
+        let prod = bit * (a + sibling);
+        let left = a + prod;
+        let right = sibling + prod;
+        outputs.extend_from_slice(&[check, left, right]);
+        [bit, a, sibling, bit_sq, check, prod, left, right]
+    }
+
+    fn witness(&self, rows: &[Self::Row], nu: usize) -> SlotWitness {
+        SlotWitness::element_from_rows(self.ty.width(), nu, rows)
+    }
+}
+
+fn bit_word(bit: bool) -> F128 {
+    if bit { F128::ONE } else { F128::ZERO }
+}
+
+/// Witnessed swap of one field word. The check wire is tied to zero.
+fn select_word(
+    b: &mut CircuitBuilder,
+    sel: SlotId,
+    zero: Wire,
+    bit: Wire,
+    a: Wire,
+    sibling: Wire,
+) -> (Wire, Wire) {
+    let out = b.gate(sel, &[bit, a, sibling]);
+    b.connect(out[0], zero);
+    (out[1], out[2])
+}
+
+/// Merkle path. Index bits are witnesses, so the wiring does not depend on
+/// the leaf position.
+fn absorb_path<const D: usize>(
+    b: &mut CircuitBuilder,
+    g: SlotId,
+    sel: SlotId,
+    cv: [Wire; 2],
+    node_params: Wire,
+    mut running: [Wire; 2],
+    opening: &Opening<D>,
+) -> [Wire; 2] {
+    // Own public zero. The Blake3 padding zero is an input of earlier gates,
+    // and tying the check to that wire cycles the dataflow.
+    let check_zero = b.public_value(F128::ZERO);
+    for level in 0..D {
+        let sib = pack8(&opening.siblings[level]);
+        let sib_w = [b.value(sib[0]), b.value(sib[1])];
+        let bit = b.value(bit_word((opening.index >> level) & 1 == 1));
+        let (left0, right0) = select_word(b, sel, check_zero, bit, running[0], sib_w[0]);
+        let (left1, right1) = select_word(b, sel, check_zero, bit, running[1], sib_w[1]);
+        let out = b.gate(
+            g,
+            &[cv[0], cv[1], left0, left1, right0, right1, node_params],
+        );
+        running = [out[0], out[1]];
+    }
+    running
+}
+
 pub(crate) fn compress(message: &[u32; 16], flags: u32) -> [u32; 8] {
     let out = blake3_compress(&IV, message, 0, 64, flags);
     out[0..8].try_into().unwrap()
@@ -122,23 +238,44 @@ pub(crate) fn rseed_message(rseed: &[u32; 8]) -> [u32; 16] {
     m
 }
 
+/// Nullifier block. The first eight words are `rseed`. The last eight are
+/// the public campaign context. A zero context is the pre-context message.
+pub(crate) fn nullifier_message(rseed: &[u32; 8], ctx: &[u32; 8]) -> [u32; 16] {
+    let mut m = rseed_message(rseed);
+    m[8..].copy_from_slice(ctx);
+    m
+}
+
 /// Blake3 commitment of the leaf key. The sidecar checks this against the
 /// recovered MetaMask key. It is not the key, and the chain batch does not
 /// carry it.
-pub(crate) fn key_com(epk_x: &[u32; 4]) -> [u32; 8] {
+pub fn key_com(epk_x: &[u32; 4]) -> [u32; 8] {
     let mut m = [0u32; 16];
     m[..4].copy_from_slice(epk_x);
     compress(&m, FLAG_KEY)
 }
 
+/// Little-endian 32-bit limbs of a payout amount. The Blake3 amount word is
+/// `pack4` of `[lo, hi, 0, 0]`. A value above `u32::MAX` is not its low limb.
+pub(crate) fn amount_limbs(amount: u64) -> [u32; 4] {
+    [amount as u32, (amount >> 32) as u32, 0, 0]
+}
+
+pub(crate) fn amount_from_limbs(words: [u32; 4]) -> Option<u64> {
+    if words[2] != 0 || words[3] != 0 {
+        return None;
+    }
+    Some(u64::from(words[0]) | (u64::from(words[1]) << 32))
+}
+
 /// Merkle leaf. The first compression absorbs `rseed_com`, the key, and the
-/// allocation except the amount. The second absorbs that digest and the
-/// amount, so the amount is bound and the key is not a public input.
+/// allocation except the amount. The second absorbs that digest and both
+/// amount limbs, so the full `u64` is bound and the key is not a public input.
 pub(crate) fn merkle_leaf(
     rseed_com: &[u32; 8],
     epk_x: &[u32; 4],
     nd: &[u32; 2],
-    v: u32,
+    v: u64,
     fdi: u32,
 ) -> [u32; 8] {
     let mut alloc = [0u32; 16];
@@ -150,7 +287,9 @@ pub(crate) fn merkle_leaf(
     let inner = compress(&alloc, FLAG_LEAF);
     let mut bound = [0u32; 16];
     bound[..8].copy_from_slice(&inner);
-    bound[8] = v;
+    let limbs = amount_limbs(v);
+    bound[8] = limbs[0];
+    bound[9] = limbs[1];
     compress(&bound, FLAG_BIND)
 }
 
@@ -161,12 +300,15 @@ pub(crate) fn node_message(left: &[u32; 8], right: &[u32; 8]) -> [u32; 16] {
     m
 }
 
-/// Root and nullifier for this opening. The nullifier depends only on `rseed`.
-/// The root depends on `rseed` through the leaf, so a second string does not
-/// sit under the same root.
+/// Root and nullifier for this opening. The nullifier is `rseed` mixed with
+/// the public `ctx`. The root depends on `rseed` through the leaf and does
+/// not depend on `ctx`.
 pub fn derive<const D: usize>(opening: &Opening<D>) -> Claim {
     let rseed_com = compress(&rseed_message(&opening.rseed), FLAG_RSEED);
-    let nullifier = compress(&rseed_message(&opening.rseed), FLAG_NULLIFIER);
+    let nullifier = compress(
+        &nullifier_message(&opening.rseed, &opening.ctx),
+        FLAG_NULLIFIER,
+    );
     let mut running = merkle_leaf(
         &rseed_com,
         &opening.epk_x,
@@ -187,6 +329,7 @@ pub fn derive<const D: usize>(opening: &Opening<D>) -> Claim {
         running = compress(&node_message(&left, &right), FLAG_NODE);
     }
     Claim {
+        ctx: opening.ctx,
         root: running,
         nullifier,
         destination: opening.destination,
@@ -241,6 +384,7 @@ pub fn build<const D: usize>(
     let nu = 8;
     let mut b = CircuitBuilder::new(nu);
     let g: SlotId = b.slot(Blake3Gate { nu });
+    let sel: SlotId = b.slot(SelectGate::new());
     let iv = pack8(&IV);
     let cv = [b.public_value(iv[0]), b.public_value(iv[1])];
 
@@ -261,10 +405,14 @@ pub fn build<const D: usize>(
         ],
     );
 
+    let ctx = pack8(&opening.ctx);
+    let ctx_w = [b.public_value(ctx[0]), b.public_value(ctx[1])];
     let nf_params = b.public_value(pack_params(FLAG_NULLIFIER));
     let nf_out = b.gate(
         g,
-        &[cv[0], cv[1], rseed_w[0], rseed_w[1], zero, zero, nf_params],
+        &[
+            cv[0], cv[1], rseed_w[0], rseed_w[1], ctx_w[0], ctx_w[1], nf_params,
+        ],
     );
     let nf_at = b.public_len();
     b.publish(nf_out[0]);
@@ -291,7 +439,7 @@ pub fn build<const D: usize>(
             leaf_params,
         ],
     );
-    let amount = b.public_value(pack4([opening.v, 0, 0, 0]));
+    let amount = b.public_value(pack4(amount_limbs(opening.v)));
     let bind_params = b.public_value(pack_params(FLAG_BIND));
     let leaf_out = b.gate(
         g,
@@ -305,31 +453,16 @@ pub fn build<const D: usize>(
     ]));
     let dest_hi = b.public_value(F128::new(opening.destination[4] as u64, 0));
 
-    let mut running = [leaf_out[0], leaf_out[1]];
     let node_params = b.public_value(pack_params(FLAG_NODE));
-    for level in 0..D {
-        let sib = pack8(&opening.siblings[level]);
-        let sib_w = [b.value(sib[0]), b.value(sib[1])];
-        let bit = (opening.index >> level) & 1 == 1;
-        let (left, right) = if bit {
-            (sib_w, running)
-        } else {
-            (running, sib_w)
-        };
-        let out = b.gate(
-            g,
-            &[
-                cv[0],
-                cv[1],
-                left[0],
-                left[1],
-                right[0],
-                right[1],
-                node_params,
-            ],
-        );
-        running = [out[0], out[1]];
-    }
+    let running = absorb_path(
+        &mut b,
+        g,
+        sel,
+        cv,
+        node_params,
+        [leaf_out[0], leaf_out[1]],
+        opening,
+    );
     let root_at = b.public_len();
     b.publish(running[0]);
     b.publish(running[1]);
@@ -338,6 +471,9 @@ pub fn build<const D: usize>(
     b.publish(dest_hi);
     let amount_at = b.public_len();
     b.publish(amount);
+    let ctx_at = b.public_len();
+    b.publish(ctx_w[0]);
+    b.publish(ctx_w[1]);
 
     let built = b.finish().expect("headstash circuit");
     let published = &built.witness.public;
@@ -361,9 +497,13 @@ pub fn build<const D: usize>(
     );
     assert_eq!(got_dest_hi[0], claim.destination[4]);
     assert_eq!(
-        got_amount[0], claim.amount,
+        amount_from_limbs(got_amount),
+        Some(claim.amount),
         "payout amount is the leaf amount"
     );
+    let got_ctx = unpack8(published[ctx_at], published[ctx_at + 1]);
+    assert_eq!(got_ctx, claim.ctx, "published campaign context");
+    let _ = sel;
     (built, g)
 }
 
@@ -410,11 +550,13 @@ pub(crate) fn payout_message(destination: &[u32; 5], blind: &[u32; 8]) -> [u32; 
     m
 }
 
-pub(crate) fn payout_commitment(destination: &[u32; 5], amount: u32, blind: &[u32; 8]) -> [u32; 8] {
+pub(crate) fn payout_commitment(destination: &[u32; 5], amount: u64, blind: &[u32; 8]) -> [u32; 8] {
     let inner = compress(&payout_message(destination, blind), FLAG_PAYOUT_COM);
     let mut bound = [0u32; 16];
     bound[..8].copy_from_slice(&inner);
-    bound[8] = amount;
+    let limbs = amount_limbs(amount);
+    bound[8] = limbs[0];
+    bound[9] = limbs[1];
     compress(&bound, FLAG_PAYOUT_BIND)
 }
 
@@ -444,6 +586,7 @@ pub fn build_private<const D: usize>(
     let nu = 8;
     let mut b = CircuitBuilder::new(nu);
     let g: SlotId = b.slot(Blake3Gate { nu });
+    let sel: SlotId = b.slot(SelectGate::new());
     let iv = pack8(&IV);
     let cv = [b.public_value(iv[0]), b.public_value(iv[1])];
     let zero = b.public_value(F128::ZERO);
@@ -464,10 +607,14 @@ pub fn build_private<const D: usize>(
         ],
     );
 
+    let ctx = pack8(&opening.open.ctx);
+    let ctx_w = [b.public_value(ctx[0]), b.public_value(ctx[1])];
     let nf_params = b.public_value(pack_params(FLAG_NULLIFIER));
     let nf_out = b.gate(
         g,
-        &[cv[0], cv[1], rseed_w[0], rseed_w[1], zero, zero, nf_params],
+        &[
+            cv[0], cv[1], rseed_w[0], rseed_w[1], ctx_w[0], ctx_w[1], nf_params,
+        ],
     );
     let nf_at = b.public_len();
     b.publish(nf_out[0]);
@@ -493,41 +640,27 @@ pub fn build_private<const D: usize>(
             leaf_params,
         ],
     );
-    let amount = b.value(pack4([opening.open.v, 0, 0, 0]));
+    let amount = b.value(pack4(amount_limbs(opening.open.v)));
     let bind_params = b.public_value(pack_params(FLAG_BIND));
     let leaf_out = b.gate(
         g,
         &[cv[0], cv[1], inner[0], inner[1], amount, zero, bind_params],
     );
 
-    let mut running = [leaf_out[0], leaf_out[1]];
     let node_params = b.public_value(pack_params(FLAG_NODE));
-    for level in 0..D {
-        let sib = pack8(&opening.open.siblings[level]);
-        let sib_w = [b.value(sib[0]), b.value(sib[1])];
-        let bit = (opening.open.index >> level) & 1 == 1;
-        let (left, right) = if bit {
-            (sib_w, running)
-        } else {
-            (running, sib_w)
-        };
-        let out = b.gate(
-            g,
-            &[
-                cv[0],
-                cv[1],
-                left[0],
-                left[1],
-                right[0],
-                right[1],
-                node_params,
-            ],
-        );
-        running = [out[0], out[1]];
-    }
+    let running = absorb_path(
+        &mut b,
+        g,
+        sel,
+        cv,
+        node_params,
+        [leaf_out[0], leaf_out[1]],
+        &opening.open,
+    );
     let root_at = b.public_len();
     b.publish(running[0]);
     b.publish(running[1]);
+    let _ = sel;
 
     let pay = payout_message(&opening.open.destination, &opening.blind);
     let pay_w = [
@@ -575,7 +708,7 @@ pub fn build_private<const D: usize>(
         claim.payout_com
     );
     let hidden_key = pack4(opening.open.epk_x);
-    let hidden_amount = pack4([opening.open.v, 0, 0, 0]);
+    let hidden_amount = pack4(amount_limbs(opening.open.v));
     let hidden_dest = pack4([
         opening.open.destination[0],
         opening.open.destination[1],
@@ -592,18 +725,20 @@ const NU: usize = 8;
 const DOMAIN: &[u8] = b"terp-headstash-flock-v1";
 
 /// Public-word positions written by [`build`]. The shape does not depend on
-/// the private `rseed` or the siblings, so a verifier rebuilds it from the
-/// leaf index and checks these words.
-const PUB_NF: usize = 5;
-const PUB_KEY: usize = 8;
-const PUB_AMOUNT: usize = 11;
-const PUB_DEST_LO: usize = 13;
-const PUB_DEST_HI: usize = 14;
-const PUB_ROOT: usize = 16;
-const PUB_DEST_LO_AGAIN: usize = 18;
-const PUB_DEST_HI_AGAIN: usize = 19;
-const PUB_AMOUNT_AGAIN: usize = 20;
-const PUB_LEN: usize = 21;
+/// the private `rseed`, the siblings, or the leaf index. A verifier rebuilds
+/// one shape and checks these words.
+const PUB_CTX_IN: usize = 4;
+const PUB_NF: usize = 7;
+const PUB_KEY: usize = 10;
+const PUB_AMOUNT: usize = 13;
+const PUB_DEST_LO: usize = 15;
+const PUB_DEST_HI: usize = 16;
+const PUB_ROOT: usize = 19;
+const PUB_DEST_LO_AGAIN: usize = 21;
+const PUB_DEST_HI_AGAIN: usize = 22;
+const PUB_AMOUNT_AGAIN: usize = 23;
+const PUB_CTX: usize = 24;
+const PUB_LEN: usize = 26;
 
 /// Read the claim out of the public segment. The destination and the amount
 /// are published twice; both copies have to match.
@@ -614,17 +749,20 @@ pub fn claim_from_public(public: &[F128]) -> Option<Claim> {
     if public[PUB_DEST_LO] != public[PUB_DEST_LO_AGAIN]
         || public[PUB_DEST_HI] != public[PUB_DEST_HI_AGAIN]
         || public[PUB_AMOUNT] != public[PUB_AMOUNT_AGAIN]
+        || public[PUB_CTX_IN] != public[PUB_CTX]
+        || public[PUB_CTX_IN + 1] != public[PUB_CTX + 1]
     {
         return None;
     }
     let dest_lo = unpack4(public[PUB_DEST_LO]);
     let dest_hi = unpack4(public[PUB_DEST_HI]);
-    let amount = unpack4(public[PUB_AMOUNT]);
+    let amount = amount_from_limbs(unpack4(public[PUB_AMOUNT]))?;
     Some(Claim {
+        ctx: unpack8(public[PUB_CTX], public[PUB_CTX + 1]),
         nullifier: unpack8(public[PUB_NF], public[PUB_NF + 1]),
         root: unpack8(public[PUB_ROOT], public[PUB_ROOT + 1]),
         destination: [dest_lo[0], dest_lo[1], dest_lo[2], dest_lo[3], dest_hi[0]],
-        amount: amount[0],
+        amount,
     })
 }
 
@@ -640,6 +778,7 @@ pub fn public_key_com(public: &[F128]) -> Option<[u32; 8]> {
 fn skeleton<const D: usize>(index: u32) -> Opening<D> {
     Opening {
         rseed: [0; 8],
+        ctx: [0; 8],
         epk_x: [0; 4],
         nd: [0; 2],
         v: 0,
@@ -668,6 +807,27 @@ pub struct ClaimProof {
     pub public: Vec<F128>,
 }
 
+/// Proof bytes the campaign checks for length and hashes for the digest.
+/// The public words travel with the proof so a caller cannot swap them.
+pub fn encode_claim_proof(proof: &ClaimProof) -> Vec<u8> {
+    bincode::serialize(&(
+        proof.proof.clone(),
+        proof.commitment.clone(),
+        proof.public.clone(),
+    ))
+    .expect("claim proof encodes")
+}
+
+/// Inverse of [`encode_claim_proof`]. A bad blob is `None`.
+pub fn decode_claim_proof(bytes: &[u8]) -> Option<ClaimProof> {
+    let (proof, commitment, public) = bincode::deserialize(bytes).ok()?;
+    Some(ClaimProof {
+        proof,
+        commitment,
+        public,
+    })
+}
+
 #[derive(Debug)]
 pub enum VerifyError {
     Index,
@@ -687,16 +847,16 @@ pub fn prove_claim<const D: usize>(opening: &Opening<D>) -> ClaimProof {
     }
 }
 
-/// Verify a proof against a circuit rebuilt from `index` alone.
+/// Verify a proof against the one circuit shape for this depth.
 ///
-/// The index selects the Merkle wiring, so it is part of the statement the
-/// sidecar has to rebuild. Private `rseed` and siblings are not.
-pub fn verify_claim<const D: usize>(index: u32, proof: &ClaimProof) -> Result<Claim, VerifyError> {
-    if D >= 32 || (index >> D) != 0 {
+/// The leaf index is a witness inside the proof. Rebuilding does not take
+/// it. Private `rseed` and siblings are not public either.
+pub fn verify_claim<const D: usize>(proof: &ClaimProof) -> Result<Claim, VerifyError> {
+    if D >= 32 {
         return Err(VerifyError::Index);
     }
     let claim = claim_from_public(&proof.public).ok_or(VerifyError::Public)?;
-    let (built, _) = build(&skeleton::<D>(index));
+    let (built, _) = build(&skeleton::<D>(0));
     verify_built(&built, &proof.public, &proof.commitment, &proof.proof)
         .map_err(|_| VerifyError::Proof)?;
     Ok(claim)
@@ -728,6 +888,23 @@ fn prove_built(
     let r1cs = build_block_r1cs(NU);
     let lc = r1cs.csc_lincheck_circuit();
     let witness = generate_witness_batch_major_partial(rows, NU);
+    let element_inputs: Vec<flock_prover::prover::UnionElementSlotInput> = built
+        .witness
+        .witnesses
+        .iter()
+        .filter_map(|slot| match slot {
+            SlotWitness::Element(words) => {
+                let words = words.clone();
+                Some(flock_prover::prover::UnionElementSlotInput::new(
+                    move |dst: &mut [F128]| {
+                        assert_eq!(dst.len(), words.len(), "element slot width");
+                        dst.copy_from_slice(&words);
+                    },
+                ))
+            }
+            SlotWitness::DeferredToRows => None,
+        })
+        .collect();
     let mut ch = FsChallenger::new(DOMAIN);
     let (proof, commitment, _) = prover::prove_fast_ligerito_union_circuit(
         &union,
@@ -735,7 +912,7 @@ fn prove_built(
         &built.witness.public,
         &pcs_params,
         vec![UnionSlotProverInput::new(witness, lc)],
-        Vec::new(),
+        element_inputs,
         &mut ch,
     );
     (proof, commitment)
@@ -829,6 +1006,7 @@ mod tests {
         }
         Opening {
             rseed: [rseed0, 2, 3, 4, 5, 6, 7, 8],
+            ctx: [9, 8, 7, 6, 5, 4, 3, 2],
             epk_x: [9, 10, 11, 12],
             nd: [13, 14],
             v: 15,
@@ -868,6 +1046,22 @@ mod tests {
             claim.root,
             "the index bit selects the side"
         );
+
+        let mut other_ctx = a;
+        other_ctx.ctx[0] ^= 1;
+        let scoped = derive(&other_ctx);
+        assert_ne!(
+            scoped.nullifier, claim.nullifier,
+            "ctx is inside the nullifier"
+        );
+        assert_eq!(scoped.root, claim.root, "ctx is not inside the leaf");
+        let mut zero_ctx = a;
+        zero_ctx.ctx = [0; 8];
+        assert_eq!(
+            derive(&zero_ctx).nullifier,
+            compress(&rseed_message(&a.rseed), FLAG_NULLIFIER),
+            "a zero context is the old rseed-only message"
+        );
     }
 
     #[test]
@@ -903,11 +1097,25 @@ mod tests {
             "private values are not part of the circuit shape"
         );
         let (other_index, _) = build(&skeleton::<FIXTURE_DEPTH>(opening.index ^ 1));
-        assert_ne!(
+        assert_eq!(
             built.shape.circuit.digest(),
             other_index.shape.circuit.digest(),
-            "the leaf index is part of the circuit shape"
+            "the leaf index is a witness, not part of the circuit shape"
         );
+    }
+
+    #[test]
+    fn a_proof_verifies_without_the_leaf_index() {
+        let opening = sample::<FIXTURE_DEPTH>(1, 1);
+        let proved = prove_claim(&opening);
+        let claim = verify_claim::<FIXTURE_DEPTH>(&proved).expect("verify");
+        assert_eq!(claim, derive(&opening));
+        let mut other = opening;
+        other.index = 0;
+        let proved_other = prove_claim(&other);
+        let other_claim = verify_claim::<FIXTURE_DEPTH>(&proved_other).expect("other index");
+        assert_ne!(other_claim.root, claim.root);
+        assert_eq!(proved.public.len(), proved_other.public.len());
     }
 
     #[test]
@@ -919,7 +1127,7 @@ mod tests {
         };
         let claim = derive_private(&opening);
         let (built, _) = build_private(&opening);
-        let parsed_nf = unpack8(built.witness.public[5], built.witness.public[6]);
+        let parsed_nf = unpack8(built.witness.public[7], built.witness.public[8]);
         assert_eq!(parsed_nf, claim.nullifier);
         assert!(
             built
@@ -933,7 +1141,7 @@ mod tests {
                 .witness
                 .public
                 .iter()
-                .all(|word| *word != pack4([opening.open.v, 0, 0, 0]))
+                .all(|word| *word != pack4(amount_limbs(opening.open.v)))
         );
 
         let mut other = opening;
@@ -942,5 +1150,35 @@ mod tests {
         assert_ne!(moved.payout_com, claim.payout_com);
         assert_eq!(moved.root, claim.root);
         assert_eq!(moved.nullifier, claim.nullifier);
+    }
+
+    #[test]
+    fn amount_above_u32_max_is_bound_in_the_public_word() {
+        let mut opening = sample::<FIXTURE_DEPTH>(1, 1);
+        opening.v = u64::from(u32::MAX) + 1;
+        let claim = derive(&opening);
+        assert_eq!(claim.amount, opening.v);
+        let mut low = opening;
+        low.v = u64::from(opening.v as u32);
+        assert_ne!(derive(&low).root, claim.root);
+        let (built, _) = build(&opening);
+        let parsed = claim_from_public(&built.witness.public).expect("public claim");
+        assert_eq!(parsed.amount, opening.v);
+        let proved = prove_claim(&opening);
+        let verified = verify_claim::<FIXTURE_DEPTH>(&proved).expect("verify");
+        assert_eq!(verified.amount, opening.v);
+        let text =
+            String::from_utf8(statement::canonical_claim_message(&claim, "terp").expect("body"))
+                .unwrap();
+        assert!(text.ends_with(&format!(":{}", opening.v)));
+        let private = PrivateOpening {
+            open: opening,
+            blind: [8, 7, 6, 5, 4, 3, 2, 1],
+        };
+        let hidden = derive_private(&private);
+        let mut truncated = private;
+        truncated.open.v = low.v;
+        assert_ne!(derive_private(&truncated).payout_com, hidden.payout_com);
+        assert_ne!(derive_private(&truncated).root, hidden.root);
     }
 }

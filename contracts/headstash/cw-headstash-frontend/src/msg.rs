@@ -1,0 +1,152 @@
+use cosmwasm_schema::{QueryResponses, cw_serde};
+use cosmwasm_std::{Binary, HexBinary};
+use cw_ownable::{cw_ownable_execute, cw_ownable_query};
+
+pub const MAX_FILES: usize = 16;
+pub const MAX_CHUNKS_PER_FILE: usize = 512;
+/// wasmvm refuses storage values over 128 KiB ("Value too big ... limit is 131072"), measured on the local chain.
+pub const HARD_MAX_CHUNK: u32 = 128 * 1024;
+pub const MAX_PATH: usize = 64;
+/// Chunk slots visited per PruneVersion call when `limit` is omitted / the hard cap.
+pub const DEFAULT_PRUNE_LIMIT: u32 = 50;
+pub const MAX_PRUNE_LIMIT: u32 = 250;
+/// Upper bound for the keep-last-N retention policy (bounds PruneOld's key scan).
+pub const MAX_KEEP_LAST: u32 = 64;
+
+#[cw_serde]
+pub struct InstantiateMsg {
+    /// Owner (x/gov on mainnet). Defaults to the sender.
+    pub owner: Option<String>,
+    /// Per-chunk byte cap (<= 128 KiB, the wasmvm storage value limit). Default 128 KiB.
+    pub max_chunk_bytes: Option<u32>,
+}
+
+#[cw_serde]
+pub struct FileEntry {
+    pub path: String,
+    pub content_type: String,
+    /// "gzip" or "identity": how stored bytes decode to the raw file.
+    pub encoding: String,
+    /// Raw (decoded) size and sha256.
+    pub size: u64,
+    pub sha256: HexBinary,
+    /// Stored (encoded) size = sum of chunk lengths.
+    pub stored_size: u64,
+    /// sha256 of each stored chunk, in order.
+    pub chunks: Vec<HexBinary>,
+}
+
+#[cw_serde]
+pub struct Manifest {
+    pub version: u32,
+    /// Path of the entry document inside `files`.
+    pub entry: String,
+    pub files: Vec<FileEntry>,
+    #[serde(default)]
+    pub note: Option<String>,
+    /// Become `current` automatically once all chunks land.
+    #[serde(default)]
+    pub activate: bool,
+    /// R12: default UI theme tokens for the page (light/dark). Validated by theme::validate_theme.
+    /// Omitted from the JSON when unset, so manifests without a theme hash (PIN) exactly as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<crate::theme::Theme>,
+}
+
+#[cw_ownable_execute]
+#[cfg_attr(feature = "interface", derive(cw_orch::ExecuteFns))]
+#[cw_serde]
+pub enum ExecuteMsg {
+    /// Owner: publish an immutable manifest; `version` must equal `next_version`.
+    PublishManifest { manifest: Manifest },
+    /// Permissionless: store one chunk whose sha256 matches the manifest.
+    UploadChunk {
+        version: u32,
+        file: u16,
+        index: u32,
+        data: Binary,
+    },
+    /// Owner: point `current` at a complete version.
+    SetCurrent { version: u32 },
+    /// Owner: delete one non-current version (chunks, then manifest + progress) in bounded
+    /// batches of at most `limit` chunk slots (default DEFAULT_PRUNE_LIMIT, cap MAX_PRUNE_LIMIT).
+    /// Resumes from the stored cursor on each call; once started, the version accepts no uploads.
+    PruneVersion { version: u32, limit: Option<u32> },
+    /// Owner: retention policy. Keep `current` plus the newest `keep_last - 1` complete-or-not
+    /// versions below it; `None` disables the policy. 1..=MAX_KEEP_LAST.
+    SetKeepLast { keep_last: Option<u32> },
+    /// Permissionless: prune, in one bounded batch of at most `limit` chunk slots, the oldest
+    /// version that the keep-last policy marks obsolete (or resume one already being pruned).
+    /// Never touches `current` or any version above it.
+    PruneOld { limit: Option<u32> },
+}
+
+#[cw_serde]
+pub struct MigrateMsg {}
+
+#[cw_serde]
+pub struct PruneStatusResponse {
+    pub version: u32,
+    /// "live" | "pruning" | "pruned" | "unknown"
+    pub state: String,
+    pub next_file: u16,
+    pub next_index: u32,
+    /// Chunk keys actually deleted so far.
+    pub removed: u32,
+    /// Chunk slots still to visit (0 once pruned).
+    pub remaining: u32,
+}
+
+#[cw_serde]
+pub struct ConfigResponse {
+    pub max_chunk_bytes: u32,
+    pub current: Option<u32>,
+    pub next_version: u32,
+    #[serde(default)]
+    pub keep_last: Option<u32>,
+}
+
+#[cw_serde]
+pub struct KeepLastResponse {
+    pub keep_last: Option<u32>,
+    /// Version PruneOld would work on next (a version already being pruned first), if any.
+    pub next_target: Option<u32>,
+}
+
+#[cw_serde]
+pub struct StatusResponse {
+    pub version: u32,
+    pub uploaded: u32,
+    pub total: u32,
+    pub complete: bool,
+}
+
+#[cw_serde]
+pub struct VersionsResponse {
+    pub versions: Vec<StatusResponse>,
+}
+
+#[cw_ownable_query]
+#[cfg_attr(feature = "interface", derive(cw_orch::QueryFns))]
+#[cw_serde]
+#[derive(QueryResponses)]
+pub enum QueryMsg {
+    #[returns(ConfigResponse)]
+    Config {},
+    /// Defaults to `current`.
+    #[returns(Manifest)]
+    Manifest { version: Option<u32> },
+    #[returns(Binary)]
+    Chunk { version: u32, file: u16, index: u32 },
+    #[returns(StatusResponse)]
+    Status { version: u32 },
+    #[returns(VersionsResponse)]
+    Versions {
+        start_after: Option<u32>,
+        limit: Option<u32>,
+    },
+    #[returns(PruneStatusResponse)]
+    PruneStatus { version: u32 },
+    #[returns(KeepLastResponse)]
+    KeepLast {},
+}

@@ -177,3 +177,76 @@ fn bench_three_opens_on_51807() {
     }
     std::println!("{{\"event\":\"done\"}}");
 }
+
+fn suite_tree_depth(notes: usize) -> u32 {
+    if notes == 0 {
+        return 0;
+    }
+    let mut current = notes;
+    if current % 2 != 0 {
+        current += 1;
+    }
+    let mut levels = 1u32;
+    while current > 1 {
+        let mut next = current / 2;
+        if next > 1 && next % 2 != 0 {
+            next += 1;
+        }
+        current = next;
+        levels += 1;
+    }
+    levels - 1
+}
+
+/// Three release proves at suite depth 16 (32,769 notes) and three at the
+/// real set (51,807 notes, index 1000). The circuit still hashes 32 levels.
+/// Keygen runs once. Prints timings only.
+#[test]
+#[ignore = "K=19 keygen plus three proves at 32769 notes and three at 51807"]
+fn bench_epoch_depth16_and_real_set() {
+    let t_key = Instant::now();
+    let pk = ProvingKey::build();
+    let keygen_secs = t_key.elapsed().as_secs_f64();
+    let vk = pk.vk();
+    let depth = crate::constants::MERKLE_DEPTH_ORCHARD;
+    std::println!(
+        "{{\"event\":\"keygen\",\"k\":{},\"circuit_merkle_depth\":{depth},\"keygen_secs\":{keygen_secs:.6},\"threads\":{}}}",
+        crate::circuit::K,
+        std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1),
+    );
+
+    let configs = [
+        ("depth16", 32_769usize, 0usize),
+        ("real_set", 51_807, 1_000),
+    ];
+    for (label, notes, index) in configs {
+        let suite_depth = suite_tree_depth(notes);
+        assert_eq!(suite_depth, 16, "{label} suite depth");
+        let suite = HeadstashCircuitSuite::new(Mock::new(label));
+        let t_wit = Instant::now();
+        let (circuit, instance, _anchor, _partial) = suite
+            .suite_backed_claim_pair(notes, index)
+            .expect("witness");
+        let witness_secs = t_wit.elapsed().as_secs_f64();
+        std::println!(
+            "{{\"event\":\"setup\",\"label\":\"{label}\",\"notes\":{notes},\"index\":{index},\"suite_depth\":{suite_depth},\"circuit_merkle_depth\":{depth},\"witness_secs\":{witness_secs:.6}}}",
+        );
+        for run in 1..=3 {
+            let mut rng = crate::os_rng();
+            let t_prove = Instant::now();
+            let proof = Proof::create(&pk, &[circuit.clone()], &[instance.clone()], &mut rng)
+                .expect("prove");
+            let prove_secs = t_prove.elapsed().as_secs_f64();
+            let t_ver = Instant::now();
+            proof.verify(&vk, &[instance.clone()]).expect("verify");
+            let verify_secs = t_ver.elapsed().as_secs_f64();
+            std::println!(
+                "{{\"event\":\"run\",\"label\":\"{label}\",\"run\":{run},\"prove_secs\":{prove_secs:.6},\"verify_secs\":{verify_secs:.6},\"proof_bytes\":{}}}",
+                proof.as_ref().len(),
+            );
+        }
+    }
+    std::println!("{{\"event\":\"done\"}}");
+}

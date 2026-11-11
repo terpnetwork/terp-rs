@@ -326,6 +326,20 @@
       "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
       "label": "latent-benders-latent-benders-2026-10-31",
       "tx": null
+    },
+    "fiab-bounty-escrow": {
+      "address": "terp19hrlad50vp2dc07cmnd67wtvphcggj3fjaakp2aqg5m7nrj04xpqq2fnxa",
+      "code": "bounty-escrow",
+      "code_id": 104,
+      "admin": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+      "dao": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+      "proposal_module_of": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+      "module_prefix": "B",
+      "instantiate2": {
+        "creator": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+        "salt": "fiab-bounty-escrow-v1"
+      },
+      "tx": "99A7464D5DCC350FF1BB396D19D9AE4241ED09B53D368413747D5B79DE1B6815"
     }
   },
   "proposals": {
@@ -338,6 +352,56 @@
       "tx": "0B484488D144452A21E390C2A78F4FDFD8BD8262634B92AB93AC2804ECF95E9F",
       "status": "veto_timelock",
       "earliest_execute": "2026-11-01T12:17:38Z"
+    },
+    "fiab:bounty-escrow-and-authz": {
+      "proposal_module": "terp16aj9tt0lgz7pprcjxd3mre4gt7anwnrk55qehmm49wt8esaq4lwstkwl8z",
+      "proposal_id": 4,
+      "draft": "morocco-1.dao-c/9-fiab-bounty-escrow-and-authz.json",
+      "tx": "99A7464D5DCC350FF1BB396D19D9AE4241ED09B53D368413747D5B79DE1B6815",
+      "height": 24178071,
+      "status": "executed",
+      "authz": {
+        "granter": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+        "grantee": "terp1fazvzt6pdpm4lg6t73h0j4dsyuc8tdxwrlwq9j",
+        "contract": "terp19hrlad50vp2dc07cmnd67wtvphcggj3fjaakp2aqg5m7nrj04xpqq2fnxa",
+        "keys": [
+          "create_bounty",
+          "approve",
+          "reject",
+          "assign",
+          "unassign",
+          "request_changes",
+          "cancel"
+        ],
+        "limit": "200 calls; 50000000000uterp + 100000000000uthiol",
+        "expiration": "2027-10-30T00:00:00Z"
+      }
+    },
+    "fiab:penumbra-liquidity-resend": {
+      "proposal_module": "terp16aj9tt0lgz7pprcjxd3mre4gt7anwnrk55qehmm49wt8esaq4lwstkwl8z",
+      "proposal_id": 5,
+      "draft": "morocco-1.dao-c/10-fiab-penumbra-liquidity-resend.json",
+      "tx": "07AF4EFD3C92D1FA35731A85A4B4634CFD09D3C0796C00A91CD4B4EBAB6031CA",
+      "height": 24180260,
+      "status": "executed",
+      "ibc": {
+        "channel": "channel-16",
+        "dst_channel": "channel-25",
+        "receiver": "penumbra1dxyf96uwp9j5sjg687gt44qt2yva5xgkhuwljsmgk5fse3whknlkscve7d02akl8g29w4v4ay50xya9f2gxdgv9mkflu56pvdspcsdqnspfry2dv2s3fgrdnueu6tnkpljkwdq",
+        "amounts": {
+          "uterp": "50000000000",
+          "uthiol": "100000000000"
+        },
+        "sequences": [
+          5,
+          6
+        ],
+        "recv_tx_penumbra": "ADA30CC6B05D40335484B9DF6B5CC5038502AFC38531FEDFB531408BC457B21D",
+        "recv_height_penumbra": 13427644,
+        "ack_tx": "C827366BDF23B1D88FBFB1297AA26EDEAB8584CD7BE2D3E71E7A8773EAD7263E",
+        "ack_height": 24180264,
+        "ack": "success"
+      }
     }
   },
   "txs": [

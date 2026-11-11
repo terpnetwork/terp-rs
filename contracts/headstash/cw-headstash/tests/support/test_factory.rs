@@ -107,8 +107,8 @@ impl TestEnv {
             .map(|i| app.api().addr_make(&format!("test_account_{}", i)))
             .collect();
 
-        // Fund test accounts
-        for account in &test_accounts {
+        // Fund owner (factory-funding tests send from owner) and test accounts
+        for account in std::iter::once(&owner).chain(test_accounts.iter()) {
             app.init_modules(|router, _, storage| {
                 router
                     .bank
@@ -230,8 +230,12 @@ pub fn mock_headstash_instantiate_msg() -> HeadstashInstantiateMsg {
         token_strategy: mock_token_strategy_new(),
         distro_hash_domain: Default::default(),
         genesis_label: None,
-        wavs: mock_wavs_proof(),
+        wavs: Some(mock_wavs_proof()),
         circuit_id: None,
+        registration_hook: None,
+        registration_hook_gas_limit: None,
+        frontend_contract: None,
+        pauser: None,
     }
 }
 
@@ -392,3 +396,54 @@ fn test_factory_ownership_transfer() {
 }
 
 // Factory doesn't support code ID updates after instantiation
+
+// Exact-bytes pins for the tokenfactory Stargate values: wasmd unpacks these as
+// protobuf Any, so JSON (the pre-fix encoding) is rejected on chain.
+#[test]
+fn tf_proto_exact_bytes_round_trip() {
+    use cw_headstash::tf_proto;
+    let cd = tf_proto::msg_create_denom("terp1abc", "hs");
+    let mut want = vec![0x0a, 0x08];
+    want.extend_from_slice(b"terp1abc");
+    want.extend_from_slice(&[0x12, 0x02]);
+    want.extend_from_slice(b"hs");
+    assert_eq!(cd, want);
+
+    let mint = tf_proto::msg_coin_addr("s", "factory/s/hs", "1000", "r");
+    let mut coin = vec![0x0a, 12];
+    coin.extend_from_slice(b"factory/s/hs");
+    coin.extend_from_slice(&[0x12, 0x04]);
+    coin.extend_from_slice(b"1000");
+    let mut want = vec![0x0a, 0x01, b's', 0x12, coin.len() as u8];
+    want.extend_from_slice(&coin);
+    want.extend_from_slice(&[0x1a, 0x01, b'r']);
+    assert_eq!(mint, want);
+
+    // Independent fixture parser reads the same bytes back.
+    let f = crate::tokenfactory_stargate::proto_fields(&mint).unwrap();
+    assert_eq!(f.len(), 3);
+    assert_eq!(f[0], (1, b"s".to_vec()));
+    assert_eq!(f[1], (2, coin.clone()));
+    assert_eq!(f[2], (3, b"r".to_vec()));
+
+    // Long string: multi-byte varint length.
+    let long = "x".repeat(300);
+    let b = tf_proto::msg_create_denom(&long, "");
+    assert_eq!(&b[..3], &[0x0a, 0xac, 0x02]);
+    assert_eq!(b.len(), 3 + 300);
+    assert_eq!(tf_proto::string_field(&b, 1).unwrap(), long);
+
+    // MsgCreateDenomResponse decode (what the chain returns in msg_responses[0]).
+    let mut resp = vec![0x0a, 12];
+    resp.extend_from_slice(b"factory/s/hs");
+    assert_eq!(
+        tf_proto::create_denom_response_denom(&resp).unwrap(),
+        "factory/s/hs"
+    );
+    assert!(tf_proto::create_denom_response_denom(&[]).is_err());
+
+    // JSON regression: neither the fixture nor the contract decoder accepts it.
+    let json = br#"{"sender":"s","subdenom":"hs"}"#;
+    assert!(crate::tokenfactory_stargate::proto_fields(json).is_err());
+    assert!(tf_proto::create_denom_response_denom(br#"{"new_token_denom":"x"}"#).is_err());
+}

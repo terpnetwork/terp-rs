@@ -22,10 +22,11 @@ use halo2_proofs::{
 };
 
 pub(in crate::circuit) mod add_chip;
+pub mod secp256k1_chip;
 /// Secp256k1 curve arithmetic chips using foreign field arithmetic.
 /// Re-exported from `circuit` module for use in test circuits.
 #[allow(missing_docs)]
-pub mod secp256k1_chip;
+mod secp_host_field;
 
 #[cfg(test)]
 mod secp256k1_chip_tests;

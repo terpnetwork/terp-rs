@@ -1,0 +1,26 @@
+{"set_epoch_campaign": {"campaign": {
+  "ctx": "{{CTX_B64}}",
+  "backend": "halo2",
+  "cutoff_height": {{CUTOFF_HEIGHT}},
+  "bech32_hrp": "terp",
+  "denom": "{{DENOM_B64}}",
+  "amounts": {{AMOUNT_CLASSES_JSON}},
+  "reserved": [],
+  "trusted": ["{{CUSTODY_PUBKEY_B64}}"],
+  "trusted_verify_threshold": 1,
+  "trusted_sign_threshold": 1,
+  "max_rows": {{MAX_ROWS}},
+  "allocation_root": "{{FINAL_ANCHOR_B64}}",
+  "root_id": 0,
+  "vk_id": {{NOTE_VK_ID}},
+  "vk_hash": "{{NOTE_VK_HASH_B64}}",
+  "sweep_recipient": "",
+  "burn_unclaimed": {{BURN_UNCLAIMED}},
+  "registration": {
+    "eligibility_root": "{{ELIGIBILITY_ROOT_B64}}",
+    "eligibility_depth": {{ELIGIBILITY_DEPTH}},
+    "min_anonymity_set": {{MIN_ANONYMITY_SET}},
+    "anchor_start_height": {{ANCHOR_START_HEIGHT}},
+    "anchor_interval": {{ANCHOR_INTERVAL}}
+  }
+}}}
