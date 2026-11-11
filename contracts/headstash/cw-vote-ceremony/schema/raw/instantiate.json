@@ -16,7 +16,161 @@
       "type": "integer",
       "format": "uint32",
       "minimum": 0.0
+    },
+    "zk_proposals": {
+      "description": "Enable the zk proposal module (DAO DAO proposal-module mode).",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ZkModuleInit"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "definitions": {
+    "HexBinary": {
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "TallyAuth": {
+      "oneOf": [
+        {
+          "description": "32-byte FROST-Ed25519 group key of the election authority (t-of-n off chain).",
+          "type": "object",
+          "required": [
+            "committee"
+          ],
+          "properties": {
+            "committee": {
+              "type": "object",
+              "required": [
+                "group_vk"
+              ],
+              "properties": {
+                "group_vk": {
+                  "$ref": "#/definitions/HexBinary"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "A tally / decryption circuit with TALLY_INSTANCES public inputs.",
+          "type": "object",
+          "required": [
+            "circuit"
+          ],
+          "properties": {
+            "circuit": {
+              "type": "object",
+              "required": [
+                "zkid"
+              ],
+              "properties": {
+                "circuit_key": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/HexBinary"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "zkid": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ZkModuleInit": {
+      "type": "object",
+      "required": [
+        "cast_zkid",
+        "quorum_bps",
+        "tally",
+        "threshold_bps",
+        "voting_period"
+      ],
+      "properties": {
+        "anchor_registry": {
+          "description": "cw-vote-anchor registry; when set, proposals must take their root from it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cast_circuit_key": {
+          "description": "Expected 72-byte wasmvm circuit key. When set, its footer prefix is checked (prover 0, curve 2, k 14) and it must equal `CircuitInfo { zk_id }` on chain.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cast_zkid": {
+          "description": "zkid of the stored vote-sdk `vote_proof` circuit.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "dao": {
+          "description": "Defaults to the instantiator (dao-core when added via UpdateProposalModules).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "quorum_bps": {
+          "description": "Turnout (yes + no + abstain) of total power in basis points.",
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0.0
+        },
+        "require_rvpk_sig": {
+          "default": true,
+          "type": "boolean"
+        },
+        "tally": {
+          "$ref": "#/definitions/TallyAuth"
+        },
+        "threshold_bps": {
+          "description": "Yes share of (yes + no) in basis points that must be exceeded.",
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0.0
+        },
+        "voting_module": {
+          "description": "Defaults to dao-core's `voting_module {}`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "voting_period": {
+          "description": "Seconds.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    }
+  }
 }

@@ -56,4 +56,10 @@ pub enum ContractError {
 
     #[error("leaf already consumed by {addr}")]
     LeafConsumed { addr: String },
+
+    #[error("zk proposals: {0}")]
+    Zk(String),
+
+    #[error(transparent)]
+    Overflow(#[from] cosmwasm_std::OverflowError),
 }

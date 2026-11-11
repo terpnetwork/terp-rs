@@ -17,7 +17,7 @@ use crate::state::{
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let admin = match msg.admin {
@@ -36,7 +36,14 @@ pub fn instantiate(
             max_nullifiers_per_mark: max,
         },
     )?;
-    Ok(Response::new().add_attribute("action", "instantiate"))
+    let res = Response::new().add_attribute("action", "instantiate");
+    match msg.zk_proposals {
+        Some(z) => {
+            let zr = crate::zk::init(deps, &info, z)?;
+            Ok(res.add_attributes(zr.attributes))
+        }
+        None => Ok(res),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
@@ -71,6 +78,28 @@ pub fn execute(
             },
         ),
         ExecuteMsg::CloseCeremony { session_id } => close_ceremony(deps, info, session_id),
+        ExecuteMsg::ZkPropose {
+            title,
+            description,
+            msgs,
+            ea_pk,
+            anchor,
+        } => crate::zk::propose(deps, env, info, title, description, msgs, ea_pk, anchor),
+        ExecuteMsg::ZkCastVote {
+            proposal_id,
+            proof,
+            instances,
+            ballot,
+            rvpk_sig,
+        } => crate::zk::cast(deps, env, proposal_id, proof, instances, ballot, rvpk_sig),
+        ExecuteMsg::ZkSubmitTally {
+            proposal_id,
+            yes,
+            no,
+            abstain,
+            attestation,
+        } => crate::zk::submit_tally(deps, env, proposal_id, yes, no, abstain, attestation),
+        ExecuteMsg::ZkExecute { proposal_id } => crate::zk::execute_proposal(deps, proposal_id),
         ExecuteMsg::Register {
             session_id,
             leaf_commit,
@@ -87,8 +116,62 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    use crate::zk;
     match msg {
+        QueryMsg::ZkConfig {} => to_json_binary(&zk::ZK_CONFIG.load(deps.storage)?),
+        QueryMsg::ZkProposal { proposal_id } => {
+            to_json_binary(&zk::query_proposal(deps, proposal_id)?)
+        }
+        QueryMsg::ZkListProposals { start_after, limit } => {
+            to_json_binary(&zk::query_proposals(deps, start_after, limit)?)
+        }
+        QueryMsg::ZkBallots {
+            proposal_id,
+            start_after,
+            limit,
+        } => to_json_binary(&zk::query_ballots(deps, proposal_id, start_after, limit)?),
+        QueryMsg::ZkCastSighash {
+            proposal_id,
+            nullifier,
+            vote_commitment,
+            ballot,
+        } => to_json_binary(&cosmwasm_std::HexBinary::from(
+            zk::cast_sighash(
+                deps.api,
+                &env.block.chain_id,
+                env.contract.address.as_str(),
+                proposal_id,
+                nullifier.as_slice(),
+                vote_commitment.as_slice(),
+                ballot.as_slice(),
+            )
+            .to_vec(),
+        )),
+        QueryMsg::ZkTallyDigest {
+            proposal_id,
+            yes,
+            no,
+            abstain,
+        } => {
+            let p = zk::query_proposal(deps, proposal_id)?;
+            to_json_binary(&cosmwasm_std::HexBinary::from(
+                zk::tally_digest(
+                    deps.api,
+                    &env.block.chain_id,
+                    env.contract.address.as_str(),
+                    &p,
+                    yes,
+                    no,
+                    abstain,
+                )
+                .to_vec(),
+            ))
+        }
+        QueryMsg::Dao {} => to_json_binary(&zk::ZK_CONFIG.load(deps.storage)?.dao),
+        QueryMsg::Info {} => to_json_binary(&zk::info()),
+        QueryMsg::ProposalCount {} => to_json_binary(&(zk::next_id(deps)? - 1)),
+        QueryMsg::NextProposalId {} => to_json_binary(&zk::next_id(deps)?),
         QueryMsg::Config {} => {
             let cfg = CONFIG.load(deps.storage)?;
             to_json_binary(&ConfigResponse {
@@ -551,6 +634,7 @@ mod tests {
             InstantiateMsg {
                 admin: Some(human("terp1admin")),
                 max_nullifiers_per_mark: 8,
+                zk_proposals: None,
             },
         )
         .unwrap();

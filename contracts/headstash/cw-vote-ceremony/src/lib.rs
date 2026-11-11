@@ -14,6 +14,10 @@ pub mod error;
 pub mod msg;
 pub mod raw_keys;
 pub mod state;
+pub mod zk;
+
+#[cfg(test)]
+mod zk_tests;
 
 pub use crate::error::ContractError;
 pub use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
