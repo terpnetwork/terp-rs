@@ -18,6 +18,11 @@
             "defaulting": true,
             "description": "Default max nullifiers per MarkSpent call.",
             "value": 3
+          },
+          "zk_proposals": {
+            "defaulting": true,
+            "description": "Enable the zk proposal module (DAO DAO proposal-module mode).",
+            "value": 11
           }
         }
       },
@@ -35,6 +40,109 @@
         "type": "integer",
         "precision": 32,
         "signed": false
+      },
+      {
+        "name": "cw_vote_ceremony_zk_ZkModuleInit",
+        "type": "struct",
+        "properties": {
+          "anchor_registry": {
+            "description": "cw-vote-anchor registry; when set, proposals must take their root from it.",
+            "value": 2
+          },
+          "cast_circuit_key": {
+            "description": "Expected 72-byte wasmvm circuit key. When set, its footer prefix is checked\n(prover 0, curve 2, k 14) and it must equal `CircuitInfo { zk_id }` on chain.",
+            "value": 7
+          },
+          "cast_zkid": {
+            "description": "zkid of the stored vote-sdk `vote_proof` circuit.",
+            "value": 5
+          },
+          "dao": {
+            "description": "Defaults to the instantiator (dao-core when added via UpdateProposalModules).",
+            "value": 2
+          },
+          "quorum_bps": {
+            "description": "Turnout (yes + no + abstain) of total power in basis points.",
+            "value": 9
+          },
+          "require_rvpk_sig": {
+            "defaulting": true,
+            "value": 10
+          },
+          "tally": {
+            "value": 8
+          },
+          "threshold_bps": {
+            "description": "Yes share of (yes + no) in basis points that must be exceeded.",
+            "value": 9
+          },
+          "voting_module": {
+            "description": "Defaults to dao-core's `voting_module {}`.",
+            "value": 2
+          },
+          "voting_period": {
+            "description": "Seconds.",
+            "value": 5
+          }
+        }
+      },
+      {
+        "name": "u64",
+        "type": "integer",
+        "precision": 64,
+        "signed": false
+      },
+      {
+        "name": "cosmwasm_std_hex_binary_HexBinary",
+        "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "hexBinary"
+      },
+      {
+        "name": "core::option::Option<cosmwasm_std::hex_binary::HexBinary>",
+        "type": "optional",
+        "inner": 6
+      },
+      {
+        "name": "cw_vote_ceremony_zk_TallyAuth",
+        "type": "enum",
+        "cases": {
+          "circuit": {
+            "description": "A tally / decryption circuit with TALLY_INSTANCES public inputs.",
+            "type": "named",
+            "properties": {
+              "circuit_key": {
+                "value": 7
+              },
+              "zkid": {
+                "value": 5
+              }
+            }
+          },
+          "committee": {
+            "description": "32-byte FROST-Ed25519 group key of the election authority (t-of-n off chain).",
+            "type": "named",
+            "properties": {
+              "group_vk": {
+                "value": 6
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "u16",
+        "type": "integer",
+        "precision": 16,
+        "signed": false
+      },
+      {
+        "name": "bool",
+        "type": "boolean"
+      },
+      {
+        "name": "core::option::Option<cw_vote_ceremony::zk::ZkModuleInit>",
+        "type": "optional",
+        "inner": 4
       }
     ]
   },
@@ -136,6 +244,81 @@
                 "value": 3
               }
             }
+          },
+          "zk_cast_vote": {
+            "description": "Anonymous ballot: vote-sdk ZKP #2 proof + 11 x 32-byte public inputs. Any sender.",
+            "type": "named",
+            "properties": {
+              "ballot": {
+                "description": "Opaque vote-share ciphertext for the election authority.",
+                "value": 5
+              },
+              "instances": {
+                "value": 5
+              },
+              "proof": {
+                "value": 5
+              },
+              "proposal_id": {
+                "value": 15
+              },
+              "rvpk_sig": {
+                "description": "RedPallas SpendAuth signature by r_vpk over `ZkCastSighash`.",
+                "value": 19
+              }
+            }
+          },
+          "zk_execute": {
+            "description": "Passed proposals call dao-core `execute_proposal_hook`. Anyone may trigger.",
+            "type": "named",
+            "properties": {
+              "proposal_id": {
+                "value": 15
+              }
+            }
+          },
+          "zk_propose": {
+            "description": "Any member with voting power > 0. Opens round `zkp-<id>`.",
+            "type": "named",
+            "properties": {
+              "anchor": {
+                "value": 18
+              },
+              "description": {
+                "value": 1
+              },
+              "ea_pk": {
+                "description": "Election authority key, 64 bytes (x || y, LE Pallas Fp).",
+                "value": 17
+              },
+              "msgs": {
+                "value": 16
+              },
+              "title": {
+                "value": 1
+              }
+            }
+          },
+          "zk_submit_tally": {
+            "description": "After expiration: totals attested by the election authority (or a tally proof).",
+            "type": "named",
+            "properties": {
+              "abstain": {
+                "value": 20
+              },
+              "attestation": {
+                "value": 21
+              },
+              "no": {
+                "value": 20
+              },
+              "proposal_id": {
+                "value": 15
+              },
+              "yes": {
+                "value": 20
+              }
+            }
           }
         }
       },
@@ -188,6 +371,296 @@
         "name": "core::option::Option<cosmwasm_std::binary::Binary>",
         "type": "optional",
         "inner": 5
+      },
+      {
+        "name": "cosmwasm_std_results_cosmos_msg_CosmosMsg",
+        "type": "enum",
+        "cases": {
+          "any": {
+            "description": "`CosmosMsg::Any` replaces the \"stargate message\" – a message wrapped\nin a [protobuf Any](https://protobuf.dev/programming-guides/proto3/#any)\nthat is supported by the chain. It behaves the same as\n`CosmosMsg::Stargate` but has a better name and slightly improved syntax.\n\nThis is feature-gated at compile time with `cosmwasm_2_0` because\na chain running CosmWasm < 2.0 cannot process this.",
+            "type": "tuple",
+            "items": [
+              13
+            ]
+          },
+          "bank": {
+            "type": "tuple",
+            "items": [
+              8
+            ]
+          },
+          "custom": {
+            "type": "tuple",
+            "items": [
+              12
+            ]
+          },
+          "wasm": {
+            "type": "tuple",
+            "items": [
+              14
+            ]
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_results_cosmos_msg_BankMsg",
+        "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
+        "type": "enum",
+        "cases": {
+          "burn": {
+            "description": "This will burn the given coins from the contract's account.\nThere is no Cosmos SDK message that performs this, but it can be done by calling the bank keeper.\nImportant if a contract controls significant token supply that must be retired.",
+            "type": "named",
+            "properties": {
+              "amount": {
+                "value": 11
+              }
+            }
+          },
+          "send": {
+            "description": "Sends native tokens from the contract to the given address.\n\nThis is translated to a [MsgSend](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto#L19-L28).\n`from_address` is automatically filled with the current contract's address.",
+            "type": "named",
+            "properties": {
+              "amount": {
+                "value": 11
+              },
+              "to_address": {
+                "value": 1
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_coin_Coin",
+        "type": "struct",
+        "properties": {
+          "amount": {
+            "value": 10
+          },
+          "denom": {
+            "value": 1
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_math_uint256_Uint256",
+        "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+        "type": "integer",
+        "precision": 256,
+        "signed": false
+      },
+      {
+        "name": "alloc::vec::Vec<cosmwasm_std::coin::Coin>",
+        "type": "array",
+        "items": 9
+      },
+      {
+        "name": "cosmwasm_std_results_empty_Empty",
+        "description": "An empty struct that serves as a placeholder in different places,\nsuch as contracts that don't set a custom message.\n\nIt is designed to be expressible in correct JSON and JSON Schema but\ncontains no meaningful data. Previously we used enums without cases,\nbut those cannot be represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+        "type": "struct",
+        "properties": {}
+      },
+      {
+        "name": "cosmwasm_std_results_cosmos_msg_AnyMsg",
+        "description": "A message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto).\nThis is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+        "type": "struct",
+        "properties": {
+          "type_url": {
+            "value": 1
+          },
+          "value": {
+            "value": 5
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_results_cosmos_msg_WasmMsg",
+        "description": "The message types of the wasm module.\n\nSee https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto",
+        "type": "enum",
+        "cases": {
+          "clear_admin": {
+            "description": "Clears the admin on the given contract, so no more migration possible.\nFails if this contract is not currently admin of the target contract.",
+            "type": "named",
+            "properties": {
+              "contract_addr": {
+                "value": 1
+              }
+            }
+          },
+          "execute": {
+            "description": "Dispatches a call to another contract at a known address (with known ABI).\n\nThis is translated to a [MsgExecuteContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L68-L78).\n`sender` is automatically filled with the current contract's address.",
+            "type": "named",
+            "properties": {
+              "contract_addr": {
+                "value": 1
+              },
+              "funds": {
+                "value": 11
+              },
+              "msg": {
+                "description": "msg is the json-encoded ExecuteMsg struct (as raw Binary)",
+                "value": 5
+              }
+            }
+          },
+          "instantiate": {
+            "description": "Instantiates a new contract from previously uploaded Wasm code.\n\nThe contract address is non-predictable. But it is guaranteed that\nwhen emitting the same Instantiate message multiple times,\nmultiple instances on different addresses will be generated. See also\nInstantiate2.\n\nThis is translated to a [MsgInstantiateContract](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L53-L71).\n`sender` is automatically filled with the current contract's address.",
+            "type": "named",
+            "properties": {
+              "admin": {
+                "value": 3
+              },
+              "code_id": {
+                "value": 15
+              },
+              "funds": {
+                "value": 11
+              },
+              "label": {
+                "description": "A human-readable label for the contract.\n\nValid values should:\n- not be empty\n- not be bigger than 128 bytes (or some chain-specific limit)\n- not start / end with whitespace",
+                "value": 1
+              },
+              "msg": {
+                "description": "msg is the JSON-encoded InstantiateMsg struct (as raw Binary)",
+                "value": 5
+              }
+            }
+          },
+          "instantiate2": {
+            "description": "Instantiates a new contract from previously uploaded Wasm code\nusing a predictable address derivation algorithm implemented in\n[`cosmwasm_std::instantiate2_address`].\n\nThis is translated to a [MsgInstantiateContract2](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L73-L96).\n`sender` is automatically filled with the current contract's address.\n`fix_msg` is automatically set to false.",
+            "type": "named",
+            "properties": {
+              "admin": {
+                "value": 3
+              },
+              "code_id": {
+                "value": 15
+              },
+              "funds": {
+                "value": 11
+              },
+              "label": {
+                "description": "A human-readable label for the contract.\n\nValid values should:\n- not be empty\n- not be bigger than 128 bytes (or some chain-specific limit)\n- not start / end with whitespace",
+                "value": 1
+              },
+              "msg": {
+                "description": "msg is the JSON-encoded InstantiateMsg struct (as raw Binary)",
+                "value": 5
+              },
+              "salt": {
+                "value": 5
+              }
+            }
+          },
+          "migrate": {
+            "description": "Migrates a given contract to use new wasm code. Passes a MigrateMsg to allow us to\ncustomize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96).\n`sender` is automatically filled with the current contract's address.",
+            "type": "named",
+            "properties": {
+              "contract_addr": {
+                "value": 1
+              },
+              "msg": {
+                "description": "msg is the json-encoded MigrateMsg struct that will be passed to the new code",
+                "value": 5
+              },
+              "new_code_id": {
+                "description": "the code_id of the new logic to place in the given contract",
+                "value": 15
+              }
+            }
+          },
+          "update_admin": {
+            "description": "Sets a new admin (for migrate) on the given contract.\nFails if this contract is not currently admin of the target contract.",
+            "type": "named",
+            "properties": {
+              "admin": {
+                "value": 1
+              },
+              "contract_addr": {
+                "value": 1
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "u64",
+        "type": "integer",
+        "precision": 64,
+        "signed": false
+      },
+      {
+        "name": "alloc::vec::Vec<cosmwasm_std::results::cosmos_msg::CosmosMsg>",
+        "type": "array",
+        "items": 7
+      },
+      {
+        "name": "cosmwasm_std_hex_binary_HexBinary",
+        "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "hexBinary"
+      },
+      {
+        "name": "cw_vote_ceremony_zk_AnchorRef",
+        "type": "enum",
+        "cases": {
+          "registry": {
+            "type": "named",
+            "properties": {
+              "height": {
+                "value": 15
+              },
+              "session_id": {
+                "value": 1
+              }
+            }
+          },
+          "root": {
+            "type": "named",
+            "properties": {
+              "height": {
+                "value": 15
+              },
+              "root": {
+                "value": 17
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "core::option::Option<cosmwasm_std::hex_binary::HexBinary>",
+        "type": "optional",
+        "inner": 17
+      },
+      {
+        "name": "cosmwasm_std_math_uint128_Uint128",
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding,\nsuch that the full u128 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n```\n# use cosmwasm_std::Uint128;\nlet a = Uint128::from(123u128);\nassert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64);\nassert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32);\nassert_eq!(c.u128(), 70);\n```",
+        "type": "integer",
+        "precision": 128,
+        "signed": false
+      },
+      {
+        "name": "cw_vote_ceremony_zk_TallyAttestation",
+        "type": "enum",
+        "cases": {
+          "committee": {
+            "type": "named",
+            "properties": {
+              "signature": {
+                "value": 17
+              }
+            }
+          },
+          "proof": {
+            "type": "named",
+            "properties": {
+              "proof": {
+                "value": 5
+              }
+            }
+          }
+        }
       }
     ]
   },
@@ -208,6 +681,15 @@
             }
           },
           "config": {
+            "type": "named",
+            "properties": {}
+          },
+          "dao": {
+            "description": "DAO DAO proposal-module surface.",
+            "type": "named",
+            "properties": {}
+          },
+          "info": {
             "type": "named",
             "properties": {}
           },
@@ -236,6 +718,14 @@
               }
             }
           },
+          "next_proposal_id": {
+            "type": "named",
+            "properties": {}
+          },
+          "proposal_count": {
+            "type": "named",
+            "properties": {}
+          },
           "raw_spent_key": {
             "description": "Documented raw key bytes for ante raw-query consumers (V2).",
             "type": "named",
@@ -250,6 +740,79 @@
                 "value": 1
               }
             }
+          },
+          "zk_ballots": {
+            "type": "named",
+            "properties": {
+              "limit": {
+                "value": 6
+              },
+              "proposal_id": {
+                "value": 3
+              },
+              "start_after": {
+                "value": 4
+              }
+            }
+          },
+          "zk_cast_sighash": {
+            "description": "Message the voter's r_vpk signs for `ZkCastVote`.",
+            "type": "named",
+            "properties": {
+              "ballot": {
+                "value": 2
+              },
+              "nullifier": {
+                "value": 7
+              },
+              "proposal_id": {
+                "value": 3
+              },
+              "vote_commitment": {
+                "value": 7
+              }
+            }
+          },
+          "zk_config": {
+            "type": "named",
+            "properties": {}
+          },
+          "zk_list_proposals": {
+            "type": "named",
+            "properties": {
+              "limit": {
+                "value": 6
+              },
+              "start_after": {
+                "value": 4
+              }
+            }
+          },
+          "zk_proposal": {
+            "type": "named",
+            "properties": {
+              "proposal_id": {
+                "value": 3
+              }
+            }
+          },
+          "zk_tally_digest": {
+            "description": "Message the election authority group key signs for `ZkSubmitTally`.",
+            "type": "named",
+            "properties": {
+              "abstain": {
+                "value": 8
+              },
+              "no": {
+                "value": 8
+              },
+              "proposal_id": {
+                "value": 3
+              },
+              "yes": {
+                "value": 8
+              }
+            }
           }
         }
       },
@@ -261,6 +824,40 @@
         "name": "cosmwasm_std_binary_Binary",
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "binary"
+      },
+      {
+        "name": "u64",
+        "type": "integer",
+        "precision": 64,
+        "signed": false
+      },
+      {
+        "name": "core::option::Option<u64>",
+        "type": "optional",
+        "inner": 3
+      },
+      {
+        "name": "u32",
+        "type": "integer",
+        "precision": 32,
+        "signed": false
+      },
+      {
+        "name": "core::option::Option<u32>",
+        "type": "optional",
+        "inner": 5
+      },
+      {
+        "name": "cosmwasm_std_hex_binary_HexBinary",
+        "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "hexBinary"
+      },
+      {
+        "name": "cosmwasm_std_math_uint128_Uint128",
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding,\nsuch that the full u128 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n```\n# use cosmwasm_std::Uint128;\nlet a = Uint128::from(123u128);\nassert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64);\nassert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32);\nassert_eq!(c.u128(), 70);\n```",
+        "type": "integer",
+        "precision": 128,
+        "signed": false
       }
     ]
   },
@@ -405,6 +1002,48 @@
         }
       ]
     },
+    "dao": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        }
+      ]
+    },
+    "info": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cw_vote_ceremony_zk_InfoResponse",
+          "type": "struct",
+          "properties": {
+            "info": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cw_vote_ceremony_zk_ContractVersion",
+          "type": "struct",
+          "properties": {
+            "contract": {
+              "value": 2
+            },
+            "version": {
+              "value": 2
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        }
+      ]
+    },
     "is_registered": {
       "type": "v1",
       "root": 0,
@@ -457,6 +1096,30 @@
         }
       ]
     },
+    "next_proposal_id": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        }
+      ]
+    },
+    "proposal_count": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        }
+      ]
+    },
     "raw_spent_key": {
       "type": "v1",
       "root": 0,
@@ -488,6 +1151,900 @@
           "name": "cosmwasm_std_binary_Binary",
           "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
           "type": "binary"
+        }
+      ]
+    },
+    "zk_ballots": {
+      "type": "v1",
+      "root": 3,
+      "definitions": [
+        {
+          "name": "cw_vote_ceremony_zk_ZkBallot",
+          "type": "struct",
+          "properties": {
+            "ballot": {
+              "description": "Opaque vote-share ciphertext for the election authority.",
+              "value": 2
+            },
+            "nullifier": {
+              "value": 1
+            },
+            "van_new": {
+              "value": 1
+            },
+            "vote_commitment": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_hex_binary_HexBinary",
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "hexBinary"
+        },
+        {
+          "name": "cosmwasm_std_binary_Binary",
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "binary"
+        },
+        {
+          "name": "alloc::vec::Vec<cw_vote_ceremony::zk::ZkBallot>",
+          "type": "array",
+          "items": 0
+        }
+      ]
+    },
+    "zk_cast_sighash": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cosmwasm_std_hex_binary_HexBinary",
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "hexBinary"
+        }
+      ]
+    },
+    "zk_config": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cw_vote_ceremony_zk_ZkConfig",
+          "type": "struct",
+          "properties": {
+            "anchor_registry": {
+              "value": 5
+            },
+            "cast_circuit_key": {
+              "value": 4
+            },
+            "cast_zkid": {
+              "value": 2
+            },
+            "dao": {
+              "value": 1
+            },
+            "quorum_bps": {
+              "value": 7
+            },
+            "require_rvpk_sig": {
+              "value": 8
+            },
+            "tally": {
+              "value": 6
+            },
+            "threshold_bps": {
+              "value": 7
+            },
+            "voting_module": {
+              "value": 1
+            },
+            "voting_period": {
+              "value": 2
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "cosmwasm_std_hex_binary_HexBinary",
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "hexBinary"
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::hex_binary::HexBinary>",
+          "type": "optional",
+          "inner": 3
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 1
+        },
+        {
+          "name": "cw_vote_ceremony_zk_TallyAuth",
+          "type": "enum",
+          "cases": {
+            "circuit": {
+              "description": "A tally / decryption circuit with TALLY_INSTANCES public inputs.",
+              "type": "named",
+              "properties": {
+                "circuit_key": {
+                  "value": 4
+                },
+                "zkid": {
+                  "value": 2
+                }
+              }
+            },
+            "committee": {
+              "description": "32-byte FROST-Ed25519 group key of the election authority (t-of-n off chain).",
+              "type": "named",
+              "properties": {
+                "group_vk": {
+                  "value": 3
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "u16",
+          "type": "integer",
+          "precision": 16,
+          "signed": false
+        },
+        {
+          "name": "bool",
+          "type": "boolean"
+        }
+      ]
+    },
+    "zk_list_proposals": {
+      "type": "v1",
+      "root": 21,
+      "definitions": [
+        {
+          "name": "cw_vote_ceremony_zk_ZkProposal",
+          "type": "struct",
+          "properties": {
+            "anchor_height": {
+              "value": 1
+            },
+            "ballots": {
+              "value": 1
+            },
+            "ballots_digest": {
+              "value": 17
+            },
+            "description": {
+              "value": 3
+            },
+            "ea_pk": {
+              "description": "64 bytes: ea_pk x || y, LE Pallas Fp each.",
+              "value": 17
+            },
+            "expiration": {
+              "value": 15
+            },
+            "id": {
+              "value": 1
+            },
+            "msgs": {
+              "value": 14
+            },
+            "proposer": {
+              "value": 2
+            },
+            "round_id": {
+              "value": 17
+            },
+            "session_id": {
+              "value": 3
+            },
+            "start_height": {
+              "value": 1
+            },
+            "status": {
+              "value": 20
+            },
+            "tally": {
+              "value": 19
+            },
+            "title": {
+              "value": 3
+            },
+            "total_power": {
+              "value": 16
+            },
+            "tree_root": {
+              "value": 17
+            }
+          }
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_results_cosmos_msg_CosmosMsg",
+          "type": "enum",
+          "cases": {
+            "any": {
+              "description": "`CosmosMsg::Any` replaces the \"stargate message\" – a message wrapped\nin a [protobuf Any](https://protobuf.dev/programming-guides/proto3/#any)\nthat is supported by the chain. It behaves the same as\n`CosmosMsg::Stargate` but has a better name and slightly improved syntax.\n\nThis is feature-gated at compile time with `cosmwasm_2_0` because\na chain running CosmWasm < 2.0 cannot process this.",
+              "type": "tuple",
+              "items": [
+                10
+              ]
+            },
+            "bank": {
+              "type": "tuple",
+              "items": [
+                5
+              ]
+            },
+            "custom": {
+              "type": "tuple",
+              "items": [
+                9
+              ]
+            },
+            "wasm": {
+              "type": "tuple",
+              "items": [
+                12
+              ]
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_results_cosmos_msg_BankMsg",
+          "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
+          "type": "enum",
+          "cases": {
+            "burn": {
+              "description": "This will burn the given coins from the contract's account.\nThere is no Cosmos SDK message that performs this, but it can be done by calling the bank keeper.\nImportant if a contract controls significant token supply that must be retired.",
+              "type": "named",
+              "properties": {
+                "amount": {
+                  "value": 8
+                }
+              }
+            },
+            "send": {
+              "description": "Sends native tokens from the contract to the given address.\n\nThis is translated to a [MsgSend](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto#L19-L28).\n`from_address` is automatically filled with the current contract's address.",
+              "type": "named",
+              "properties": {
+                "amount": {
+                  "value": 8
+                },
+                "to_address": {
+                  "value": 3
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 7
+            },
+            "denom": {
+              "value": 3
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "alloc::vec::Vec<cosmwasm_std::coin::Coin>",
+          "type": "array",
+          "items": 6
+        },
+        {
+          "name": "cosmwasm_std_results_empty_Empty",
+          "description": "An empty struct that serves as a placeholder in different places,\nsuch as contracts that don't set a custom message.\n\nIt is designed to be expressible in correct JSON and JSON Schema but\ncontains no meaningful data. Previously we used enums without cases,\nbut those cannot be represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+          "type": "struct",
+          "properties": {}
+        },
+        {
+          "name": "cosmwasm_std_results_cosmos_msg_AnyMsg",
+          "description": "A message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto).\nThis is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+          "type": "struct",
+          "properties": {
+            "type_url": {
+              "value": 3
+            },
+            "value": {
+              "value": 11
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_binary_Binary",
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "binary"
+        },
+        {
+          "name": "cosmwasm_std_results_cosmos_msg_WasmMsg",
+          "description": "The message types of the wasm module.\n\nSee https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto",
+          "type": "enum",
+          "cases": {
+            "clear_admin": {
+              "description": "Clears the admin on the given contract, so no more migration possible.\nFails if this contract is not currently admin of the target contract.",
+              "type": "named",
+              "properties": {
+                "contract_addr": {
+                  "value": 3
+                }
+              }
+            },
+            "execute": {
+              "description": "Dispatches a call to another contract at a known address (with known ABI).\n\nThis is translated to a [MsgExecuteContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L68-L78).\n`sender` is automatically filled with the current contract's address.",
+              "type": "named",
+              "properties": {
+                "contract_addr": {
+                  "value": 3
+                },
+                "funds": {
+                  "value": 8
+                },
+                "msg": {
+                  "description": "msg is the json-encoded ExecuteMsg struct (as raw Binary)",
+                  "value": 11
+                }
+              }
+            },
+            "instantiate": {
+              "description": "Instantiates a new contract from previously uploaded Wasm code.\n\nThe contract address is non-predictable. But it is guaranteed that\nwhen emitting the same Instantiate message multiple times,\nmultiple instances on different addresses will be generated. See also\nInstantiate2.\n\nThis is translated to a [MsgInstantiateContract](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L53-L71).\n`sender` is automatically filled with the current contract's address.",
+              "type": "named",
+              "properties": {
+                "admin": {
+                  "value": 13
+                },
+                "code_id": {
+                  "value": 1
+                },
+                "funds": {
+                  "value": 8
+                },
+                "label": {
+                  "description": "A human-readable label for the contract.\n\nValid values should:\n- not be empty\n- not be bigger than 128 bytes (or some chain-specific limit)\n- not start / end with whitespace",
+                  "value": 3
+                },
+                "msg": {
+                  "description": "msg is the JSON-encoded InstantiateMsg struct (as raw Binary)",
+                  "value": 11
+                }
+              }
+            },
+            "instantiate2": {
+              "description": "Instantiates a new contract from previously uploaded Wasm code\nusing a predictable address derivation algorithm implemented in\n[`cosmwasm_std::instantiate2_address`].\n\nThis is translated to a [MsgInstantiateContract2](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L73-L96).\n`sender` is automatically filled with the current contract's address.\n`fix_msg` is automatically set to false.",
+              "type": "named",
+              "properties": {
+                "admin": {
+                  "value": 13
+                },
+                "code_id": {
+                  "value": 1
+                },
+                "funds": {
+                  "value": 8
+                },
+                "label": {
+                  "description": "A human-readable label for the contract.\n\nValid values should:\n- not be empty\n- not be bigger than 128 bytes (or some chain-specific limit)\n- not start / end with whitespace",
+                  "value": 3
+                },
+                "msg": {
+                  "description": "msg is the JSON-encoded InstantiateMsg struct (as raw Binary)",
+                  "value": 11
+                },
+                "salt": {
+                  "value": 11
+                }
+              }
+            },
+            "migrate": {
+              "description": "Migrates a given contract to use new wasm code. Passes a MigrateMsg to allow us to\ncustomize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96).\n`sender` is automatically filled with the current contract's address.",
+              "type": "named",
+              "properties": {
+                "contract_addr": {
+                  "value": 3
+                },
+                "msg": {
+                  "description": "msg is the json-encoded MigrateMsg struct that will be passed to the new code",
+                  "value": 11
+                },
+                "new_code_id": {
+                  "description": "the code_id of the new logic to place in the given contract",
+                  "value": 1
+                }
+              }
+            },
+            "update_admin": {
+              "description": "Sets a new admin (for migrate) on the given contract.\nFails if this contract is not currently admin of the target contract.",
+              "type": "named",
+              "properties": {
+                "admin": {
+                  "value": 3
+                },
+                "contract_addr": {
+                  "value": 3
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 3
+        },
+        {
+          "name": "alloc::vec::Vec<cosmwasm_std::results::cosmos_msg::CosmosMsg>",
+          "type": "array",
+          "items": 4
+        },
+        {
+          "name": "cosmwasm_std_timestamp_Timestamp",
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+          "type": "timestamp"
+        },
+        {
+          "name": "cosmwasm_std_math_uint128_Uint128",
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding,\nsuch that the full u128 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n```\n# use cosmwasm_std::Uint128;\nlet a = Uint128::from(123u128);\nassert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64);\nassert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32);\nassert_eq!(c.u128(), 70);\n```",
+          "type": "integer",
+          "precision": 128,
+          "signed": false
+        },
+        {
+          "name": "cosmwasm_std_hex_binary_HexBinary",
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "hexBinary"
+        },
+        {
+          "name": "cw_vote_ceremony_zk_ZkTally",
+          "type": "struct",
+          "properties": {
+            "abstain": {
+              "value": 16
+            },
+            "no": {
+              "value": 16
+            },
+            "yes": {
+              "value": 16
+            }
+          }
+        },
+        {
+          "name": "core::option::Option<cw_vote_ceremony::zk::ZkTally>",
+          "type": "optional",
+          "inner": 18
+        },
+        {
+          "name": "cw_vote_ceremony_zk_ZkStatus",
+          "type": "enum",
+          "cases": {
+            "executed": {
+              "type": "unit"
+            },
+            "open": {
+              "type": "unit"
+            },
+            "passed": {
+              "type": "unit"
+            },
+            "rejected": {
+              "type": "unit"
+            }
+          }
+        },
+        {
+          "name": "alloc::vec::Vec<cw_vote_ceremony::zk::ZkProposal>",
+          "type": "array",
+          "items": 0
+        }
+      ]
+    },
+    "zk_proposal": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cw_vote_ceremony_zk_ZkProposal",
+          "type": "struct",
+          "properties": {
+            "anchor_height": {
+              "value": 1
+            },
+            "ballots": {
+              "value": 1
+            },
+            "ballots_digest": {
+              "value": 17
+            },
+            "description": {
+              "value": 3
+            },
+            "ea_pk": {
+              "description": "64 bytes: ea_pk x || y, LE Pallas Fp each.",
+              "value": 17
+            },
+            "expiration": {
+              "value": 15
+            },
+            "id": {
+              "value": 1
+            },
+            "msgs": {
+              "value": 14
+            },
+            "proposer": {
+              "value": 2
+            },
+            "round_id": {
+              "value": 17
+            },
+            "session_id": {
+              "value": 3
+            },
+            "start_height": {
+              "value": 1
+            },
+            "status": {
+              "value": 20
+            },
+            "tally": {
+              "value": 19
+            },
+            "title": {
+              "value": 3
+            },
+            "total_power": {
+              "value": 16
+            },
+            "tree_root": {
+              "value": 17
+            }
+          }
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_results_cosmos_msg_CosmosMsg",
+          "type": "enum",
+          "cases": {
+            "any": {
+              "description": "`CosmosMsg::Any` replaces the \"stargate message\" – a message wrapped\nin a [protobuf Any](https://protobuf.dev/programming-guides/proto3/#any)\nthat is supported by the chain. It behaves the same as\n`CosmosMsg::Stargate` but has a better name and slightly improved syntax.\n\nThis is feature-gated at compile time with `cosmwasm_2_0` because\na chain running CosmWasm < 2.0 cannot process this.",
+              "type": "tuple",
+              "items": [
+                10
+              ]
+            },
+            "bank": {
+              "type": "tuple",
+              "items": [
+                5
+              ]
+            },
+            "custom": {
+              "type": "tuple",
+              "items": [
+                9
+              ]
+            },
+            "wasm": {
+              "type": "tuple",
+              "items": [
+                12
+              ]
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_results_cosmos_msg_BankMsg",
+          "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
+          "type": "enum",
+          "cases": {
+            "burn": {
+              "description": "This will burn the given coins from the contract's account.\nThere is no Cosmos SDK message that performs this, but it can be done by calling the bank keeper.\nImportant if a contract controls significant token supply that must be retired.",
+              "type": "named",
+              "properties": {
+                "amount": {
+                  "value": 8
+                }
+              }
+            },
+            "send": {
+              "description": "Sends native tokens from the contract to the given address.\n\nThis is translated to a [MsgSend](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto#L19-L28).\n`from_address` is automatically filled with the current contract's address.",
+              "type": "named",
+              "properties": {
+                "amount": {
+                  "value": 8
+                },
+                "to_address": {
+                  "value": 3
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 7
+            },
+            "denom": {
+              "value": 3
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "alloc::vec::Vec<cosmwasm_std::coin::Coin>",
+          "type": "array",
+          "items": 6
+        },
+        {
+          "name": "cosmwasm_std_results_empty_Empty",
+          "description": "An empty struct that serves as a placeholder in different places,\nsuch as contracts that don't set a custom message.\n\nIt is designed to be expressible in correct JSON and JSON Schema but\ncontains no meaningful data. Previously we used enums without cases,\nbut those cannot be represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+          "type": "struct",
+          "properties": {}
+        },
+        {
+          "name": "cosmwasm_std_results_cosmos_msg_AnyMsg",
+          "description": "A message encoded the same way as a protobuf [Any](https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/any.proto).\nThis is the same structure as messages in `TxBody` from [ADR-020](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-020-protobuf-transaction-encoding.md)",
+          "type": "struct",
+          "properties": {
+            "type_url": {
+              "value": 3
+            },
+            "value": {
+              "value": 11
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_binary_Binary",
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "binary"
+        },
+        {
+          "name": "cosmwasm_std_results_cosmos_msg_WasmMsg",
+          "description": "The message types of the wasm module.\n\nSee https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto",
+          "type": "enum",
+          "cases": {
+            "clear_admin": {
+              "description": "Clears the admin on the given contract, so no more migration possible.\nFails if this contract is not currently admin of the target contract.",
+              "type": "named",
+              "properties": {
+                "contract_addr": {
+                  "value": 3
+                }
+              }
+            },
+            "execute": {
+              "description": "Dispatches a call to another contract at a known address (with known ABI).\n\nThis is translated to a [MsgExecuteContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L68-L78).\n`sender` is automatically filled with the current contract's address.",
+              "type": "named",
+              "properties": {
+                "contract_addr": {
+                  "value": 3
+                },
+                "funds": {
+                  "value": 8
+                },
+                "msg": {
+                  "description": "msg is the json-encoded ExecuteMsg struct (as raw Binary)",
+                  "value": 11
+                }
+              }
+            },
+            "instantiate": {
+              "description": "Instantiates a new contract from previously uploaded Wasm code.\n\nThe contract address is non-predictable. But it is guaranteed that\nwhen emitting the same Instantiate message multiple times,\nmultiple instances on different addresses will be generated. See also\nInstantiate2.\n\nThis is translated to a [MsgInstantiateContract](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L53-L71).\n`sender` is automatically filled with the current contract's address.",
+              "type": "named",
+              "properties": {
+                "admin": {
+                  "value": 13
+                },
+                "code_id": {
+                  "value": 1
+                },
+                "funds": {
+                  "value": 8
+                },
+                "label": {
+                  "description": "A human-readable label for the contract.\n\nValid values should:\n- not be empty\n- not be bigger than 128 bytes (or some chain-specific limit)\n- not start / end with whitespace",
+                  "value": 3
+                },
+                "msg": {
+                  "description": "msg is the JSON-encoded InstantiateMsg struct (as raw Binary)",
+                  "value": 11
+                }
+              }
+            },
+            "instantiate2": {
+              "description": "Instantiates a new contract from previously uploaded Wasm code\nusing a predictable address derivation algorithm implemented in\n[`cosmwasm_std::instantiate2_address`].\n\nThis is translated to a [MsgInstantiateContract2](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L73-L96).\n`sender` is automatically filled with the current contract's address.\n`fix_msg` is automatically set to false.",
+              "type": "named",
+              "properties": {
+                "admin": {
+                  "value": 13
+                },
+                "code_id": {
+                  "value": 1
+                },
+                "funds": {
+                  "value": 8
+                },
+                "label": {
+                  "description": "A human-readable label for the contract.\n\nValid values should:\n- not be empty\n- not be bigger than 128 bytes (or some chain-specific limit)\n- not start / end with whitespace",
+                  "value": 3
+                },
+                "msg": {
+                  "description": "msg is the JSON-encoded InstantiateMsg struct (as raw Binary)",
+                  "value": 11
+                },
+                "salt": {
+                  "value": 11
+                }
+              }
+            },
+            "migrate": {
+              "description": "Migrates a given contract to use new wasm code. Passes a MigrateMsg to allow us to\ncustomize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96).\n`sender` is automatically filled with the current contract's address.",
+              "type": "named",
+              "properties": {
+                "contract_addr": {
+                  "value": 3
+                },
+                "msg": {
+                  "description": "msg is the json-encoded MigrateMsg struct that will be passed to the new code",
+                  "value": 11
+                },
+                "new_code_id": {
+                  "description": "the code_id of the new logic to place in the given contract",
+                  "value": 1
+                }
+              }
+            },
+            "update_admin": {
+              "description": "Sets a new admin (for migrate) on the given contract.\nFails if this contract is not currently admin of the target contract.",
+              "type": "named",
+              "properties": {
+                "admin": {
+                  "value": 3
+                },
+                "contract_addr": {
+                  "value": 3
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 3
+        },
+        {
+          "name": "alloc::vec::Vec<cosmwasm_std::results::cosmos_msg::CosmosMsg>",
+          "type": "array",
+          "items": 4
+        },
+        {
+          "name": "cosmwasm_std_timestamp_Timestamp",
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+          "type": "timestamp"
+        },
+        {
+          "name": "cosmwasm_std_math_uint128_Uint128",
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding,\nsuch that the full u128 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n```\n# use cosmwasm_std::Uint128;\nlet a = Uint128::from(123u128);\nassert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64);\nassert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32);\nassert_eq!(c.u128(), 70);\n```",
+          "type": "integer",
+          "precision": 128,
+          "signed": false
+        },
+        {
+          "name": "cosmwasm_std_hex_binary_HexBinary",
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "hexBinary"
+        },
+        {
+          "name": "cw_vote_ceremony_zk_ZkTally",
+          "type": "struct",
+          "properties": {
+            "abstain": {
+              "value": 16
+            },
+            "no": {
+              "value": 16
+            },
+            "yes": {
+              "value": 16
+            }
+          }
+        },
+        {
+          "name": "core::option::Option<cw_vote_ceremony::zk::ZkTally>",
+          "type": "optional",
+          "inner": 18
+        },
+        {
+          "name": "cw_vote_ceremony_zk_ZkStatus",
+          "type": "enum",
+          "cases": {
+            "executed": {
+              "type": "unit"
+            },
+            "open": {
+              "type": "unit"
+            },
+            "passed": {
+              "type": "unit"
+            },
+            "rejected": {
+              "type": "unit"
+            }
+          }
+        }
+      ]
+    },
+    "zk_tally_digest": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cosmwasm_std_hex_binary_HexBinary",
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "hexBinary"
         }
       ]
     }

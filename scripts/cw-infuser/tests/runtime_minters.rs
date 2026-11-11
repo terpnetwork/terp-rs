@@ -88,6 +88,7 @@ fn runtime_minters_on_deployed_codes() {
     let mm = cw721_svg::MigrateMsg {
         dregg_ibc_only: None,
         runtime_minters: Some(vec![PAYMENT_MINTER.into()]),
+        next_token_id: None,
     };
     chain
         .call_as(&chain.addr_make("rando"))

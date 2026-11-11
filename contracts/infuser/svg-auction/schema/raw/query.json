@@ -131,6 +131,281 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "private_auction"
+      ],
+      "properties": {
+        "private_auction": {
+          "type": "object",
+          "required": [
+            "auction_id"
+          ],
+          "properties": {
+            "auction_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Open private auction for a token, if any.",
+      "type": "object",
+      "required": [
+        "private_nft_auction"
+      ],
+      "properties": {
+        "private_nft_auction": {
+          "type": "object",
+          "required": [
+            "nft_contract",
+            "token_id"
+          ],
+          "properties": {
+            "nft_contract": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "private_bids"
+      ],
+      "properties": {
+        "private_bids": {
+          "type": "object",
+          "required": [
+            "auction_id"
+          ],
+          "properties": {
+            "auction_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "The 32-byte digest a FROST group signs for `action`.",
+      "type": "object",
+      "required": [
+        "private_signing_digest"
+      ],
+      "properties": {
+        "private_signing_digest": {
+          "type": "object",
+          "required": [
+            "action",
+            "auction_id",
+            "bidder",
+            "commitment",
+            "escrow_cm",
+            "finalize_vk",
+            "memo_cm",
+            "ovk_tag",
+            "reclaim_vk"
+          ],
+          "properties": {
+            "action": {
+              "$ref": "#/definitions/PrivateAction"
+            },
+            "auction_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "bid_id": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "bidder": {
+              "type": "string"
+            },
+            "commitment": {
+              "$ref": "#/definitions/HexBinary"
+            },
+            "dkg_transcript": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/HexBinary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "escrow_cm": {
+              "$ref": "#/definitions/HexBinary"
+            },
+            "finalize_vk": {
+              "$ref": "#/definitions/HexBinary"
+            },
+            "memo_cm": {
+              "$ref": "#/definitions/HexBinary"
+            },
+            "ovk_tag": {
+              "$ref": "#/definitions/HexBinary"
+            },
+            "reclaim_vk": {
+              "$ref": "#/definitions/HexBinary"
+            },
+            "release": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ShieldedRelease"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Share allocation and thresholds used by private bids.",
+      "type": "object",
+      "required": [
+        "private_policy"
+      ],
+      "properties": {
+        "private_policy": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
-  ]
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "HexBinary": {
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "PrivateAction": {
+      "oneOf": [
+        {
+          "description": "Proof-of-possession of `reclaim_vk` at bid time (5-of-6 => B and P present).",
+          "type": "string",
+          "enum": [
+            "bind_reclaim"
+          ]
+        },
+        {
+          "description": "Proof-of-possession of `finalize_vk` at bid time (6-of-6 => B, P and S present).",
+          "type": "string",
+          "enum": [
+            "bind_finalize"
+          ]
+        },
+        {
+          "description": "Close the bid and record the shielded refund (signed by `reclaim_vk`).",
+          "type": "string",
+          "enum": [
+            "reclaim"
+          ]
+        },
+        {
+          "description": "Settle the auction to this bid and record the shielded payment (`finalize_vk`).",
+          "type": "string",
+          "enum": [
+            "finalize"
+          ]
+        }
+      ]
+    },
+    "ShieldedRelease": {
+      "description": "A Zcash payment authorised by a bid group, as recorded on Terp.",
+      "type": "object",
+      "required": [
+        "notes_cm",
+        "ovk_ciphertext",
+        "ovk_tag"
+      ],
+      "properties": {
+        "notes_cm": {
+          "description": "`blake2b(NOTES_DOMAIN || n || note_1 || .. || note_n)` over the 382-byte SEAM-NOTE-OUT encodings of the payment outputs (see [`notes_preimage`]). Each note carries a random `rcm`, so the commitment hides values and destinations.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            }
+          ]
+        },
+        "ovk_ciphertext": {
+          "description": "The same notes encrypted under the bid's OVK. Opaque on chain.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "ovk_tag": {
+          "description": "`blake2b(OVK_DOMAIN || ovk)`; must equal the bid's `ovk_tag`.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            }
+          ]
+        },
+        "payment_cm": {
+          "description": "Finalize only: note commitment of the seller's payment output, which the payment client must attest as included on Zcash.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
 }

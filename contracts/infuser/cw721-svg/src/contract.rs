@@ -21,6 +21,26 @@ pub const ORACLE_PRICING: Item<terp_oracle::OraclePricing> = Item::new("svg_orac
 /// Address that instantiated this collection (e.g. the cw-svg-minter factory);
 /// may set oracle pricing alongside the creator owner.
 pub const INSTANTIATOR: Item<Addr> = Item::new("svg_instantiator");
+/// Id for the next minted token. It only goes up: a burn lowers the live token
+/// count but must never make a later mint reuse an id that is still taken.
+pub const NEXT_TOKEN_ID: Item<u64> = Item::new("svg_next_token_id");
+
+/// Highest numeric token id + 1 (0 when empty). Migrate-only default for
+/// collections stored before [`NEXT_TOKEN_ID`] existed.
+pub fn next_id_from_tokens(storage: &dyn cosmwasm_std::Storage) -> cosmwasm_std::StdResult<u64> {
+    let mut next = 0u64;
+    for k in Cw721SvgContract::default().config.nft_info.keys(
+        storage,
+        None,
+        None,
+        cosmwasm_std::Order::Ascending,
+    ) {
+        if let Ok(id) = k?.parse::<u64>() {
+            next = next.max(id + 1);
+        }
+    }
+    Ok(next)
+}
 /// Raw SVP1 bytes: the only copy of the template and variables.
 pub const SVG_PACKED_KEY: &[u8] = b"svg_packed";
 
@@ -224,7 +244,10 @@ pub fn execute_mint(
     {
         return Err(ContractError::MintingEnded {});
     }
-    if mint_count + m.amnt > config.total {
+    // Supply cap is checked against the id counter, not the live count.
+    // Not yet migrated: start from the live count and skip taken ids below.
+    let mut next_id = NEXT_TOKEN_ID.may_load(deps.storage)?.unwrap_or(mint_count);
+    if next_id + m.amnt > config.total {
         return Err(ContractError::CannotMintMoreThanTotal {});
     }
 
@@ -313,8 +336,15 @@ pub fn execute_mint(
 
     let variables = load_vars(deps.storage)?;
     let mut events = vec![];
-    for i in 0..amnt {
-        let tid = mint_count + i;
+    for _ in 0..amnt {
+        while c.config.nft_info.has(deps.storage, &next_id.to_string()) {
+            next_id += 1;
+        }
+        if next_id >= config.total {
+            return Err(ContractError::CannotMintMoreThanTotal {});
+        }
+        let tid = next_id;
+        next_id += 1;
         let token_id = tid.to_string();
         // Generate per-token entropy: sha256(tid || seed || block_height)
         let mut hasher = Sha256::new();
@@ -360,6 +390,8 @@ pub fn execute_mint(
                 .add_attribute("owner", info.sender.to_string()),
         );
     }
+
+    NEXT_TOKEN_ID.save(deps.storage, &next_id)?;
 
     // Track per-address mint count
     let prev_count = MINTER_ADDRS
@@ -550,6 +582,10 @@ pub struct MigrateMsg {
     /// Existing collections: open the DREGG IBC mint gate (runtime accounts + IBC-only).
     pub dregg_ibc_only: Option<bool>,
     pub runtime_minters: Option<Vec<String>>,
+    /// Set the next token id (only goes up). Unset: keep the stored counter, or
+    /// for a collection without one, the highest existing id + 1.
+    #[serde(default)]
+    pub next_token_id: Option<u64>,
 }
 
 /// Response from the whitelist HasMember query

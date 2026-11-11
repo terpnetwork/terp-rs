@@ -3,7 +3,8 @@
 //! - Detect RPC health (`getblockchaininfo`)
 //! - Validate receive address (`validateaddress`)
 //! - Map dest display → `owner_binding` with UI domain tag
-//! - Shared golden vector: `docs/plans/spectrum/e2e/zakura/golden-dest-binding.json`
+//! - Shared golden vector: `tests/private-bridge/zakura/golden-dest-binding.json`
+//!   (moved from `tests/e2e/private-bridge/` in c0a786d7)
 //!
 //! Zakura core is **not** a wallet: no `getnewaddress` / `z_getnewaccount` without
 //! zcashd-compat residual. Default dest is the regtest `miner_address` used by
@@ -200,7 +201,7 @@ pub fn default_golden_dest_binding_path() -> PathBuf {
     }
     // CARGO_MANIFEST_DIR = terp-rs/tools/headstash/test-press
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../tests/e2e/private-bridge/zakura/golden-dest-binding.json")
+        .join("../../../tests/private-bridge/zakura/golden-dest-binding.json")
 }
 
 pub fn load_golden_dest_binding(path: &Path) -> Result<GoldenDestBindingDoc, GoldenDestError> {
@@ -703,7 +704,7 @@ mod tests {
         let path = default_golden_dest_binding_path();
         assert!(
             path.is_file(),
-            "missing golden vector at {} — create docs/plans/spectrum/e2e/zakura/golden-dest-binding.json",
+            "missing golden vector at {} — create tests/private-bridge/zakura/golden-dest-binding.json",
             path.display()
         );
         let doc = load_golden_dest_binding(&path).expect("load golden");

@@ -1,0 +1,5 @@
+File Location,Count
+./dao-contracts/scripts/create-v2-dao.sh,4
+./dao-contracts/scripts/create-v2-dao-native-voting.sh,4
+./dao-contracts/scripts/create-v2-dao-prepropose.sh,4
+./dao-contracts/scripts/update-v2-subdaos.sh,9

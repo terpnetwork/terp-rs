@@ -415,6 +415,118 @@ pub fn lab_receipt_after_burn(
 }
 
 // ---------------------------------------------------------------------------
+// Escrow release (OmniBridge-shaped) — burn + dest + threshold committee
+// ---------------------------------------------------------------------------
+
+/// Product mode: ECDSA multi-sig committee (`TC01`) auth over release digest.
+pub const MODE_THRESHOLD_ESCROW_RELEASE: &str = "threshold_escrow_release";
+
+/// Lab residual when multi-sig auth ok but Zcash send simulated.
+pub const MODE_THRESHOLD_ESCROW_RELEASE_SIMULATED: &str = "threshold_escrow_release_simulated";
+
+/// Product mode: **FROST** group sig (`FE01`) over same release digest (Object A).
+pub const MODE_FROST_ESCROW_RELEASE: &str = "frost_escrow_release";
+
+/// Lab residual: FROST Object A ok, Zcash send simulated (not Object B spend yet).
+pub const MODE_FROST_ESCROW_RELEASE_SIMULATED: &str = "frost_escrow_release_simulated";
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum EscrowReleaseError {
+    /// Missing or empty burn evidence.
+    MissingBurn,
+    /// Dest seal ≠ burn dest_commitment.
+    DestMismatch,
+    /// Threshold / FROST signature / committee verify failed.
+    BadThresholdAuth,
+    /// Schema (zero amounts etc).
+    Schema,
+}
+
+/// Committee-authorized escrow release statement (after Option D burn).
+///
+/// `committee_pk` is either `TC01` (lab multi-sig) or `FE01` (FROST).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ThresholdEscrowAuth {
+    /// Encoded committee public key (`TC01` … or `FE01` …).
+    pub committee_pk: Vec<u8>,
+    /// Combined multi-sig encoding **or** FROST group signature bytes.
+    pub combined_sig: Vec<u8>,
+}
+
+/// Fail-closed gate: burn evidence + sealed dest + valid **threshold or FROST** auth.
+///
+/// Does **not** move coins — pure authorization for the Zcash release path.
+/// Ops/inventory funder-only (no committee) is rejected for product mode.
+pub fn authorize_escrow_release(
+    evidence: &EgressBurnEvidenceV0,
+    sealed_dest: &[u8; 32],
+    auth: &ThresholdEscrowAuth,
+) -> Result<ZecEgressReceiptV0, EscrowReleaseError> {
+    if evidence.burn.nullifier == [0u8; 32] || evidence.burn.value == 0 {
+        return Err(EscrowReleaseError::MissingBurn);
+    }
+    if evidence.burn.dest_commitment != *sealed_dest {
+        return Err(EscrowReleaseError::DestMismatch);
+    }
+    if auth.committee_pk.is_empty() || auth.combined_sig.is_empty() {
+        return Err(EscrowReleaseError::BadThresholdAuth);
+    }
+
+    let digest = threshold_committee::escrow_release_digest(
+        &evidence.burn.nullifier,
+        &evidence.burn.dest_commitment,
+        evidence.burn.value,
+        &evidence.burn.asset_id,
+    );
+
+    let (mode, pending_prefix) = if frost_escrow::is_frost_public_key(&auth.committee_pk) {
+        frost_escrow::verify_encoded(&auth.committee_pk, &digest, &auth.combined_sig)
+            .map_err(|_| EscrowReleaseError::BadThresholdAuth)?;
+        (MODE_FROST_ESCROW_RELEASE, MODE_FROST_ESCROW_RELEASE)
+    } else if threshold_committee::is_committee_public_key(&auth.committee_pk) {
+        threshold_committee::verify_encoded(&auth.committee_pk, &digest, &auth.combined_sig)
+            .map_err(|_| EscrowReleaseError::BadThresholdAuth)?;
+        (MODE_THRESHOLD_ESCROW_RELEASE, MODE_THRESHOLD_ESCROW_RELEASE)
+    } else {
+        return Err(EscrowReleaseError::BadThresholdAuth);
+    };
+
+    Ok(ZecEgressReceiptV0 {
+        dest_display: hex32(sealed_dest),
+        dest_owner_binding_hex: hex32(&evidence.burn.dest_commitment),
+        dest_kind: evidence.burn.dest_kind,
+        zec_txid: Some(format!(
+            "{pending_prefix}:pending:{}",
+            hex32(&evidence.burn.nullifier)
+        )),
+        amount_zat: evidence.burn.value,
+        mode: mode.to_string(),
+        burn_nullifier_hex: hex32(&evidence.burn.nullifier),
+    })
+}
+
+/// Product path must not use unlabeled inventory funder as escrow_release.
+pub fn reject_funder_only_as_product(mode: &str) -> bool {
+    matches!(
+        mode,
+        "lab_inventory_pay" | "lab_inventory_pay_simulated" | "ops_funder" | "host_pay"
+    )
+}
+
+/// True if mode is FROST or multi-sig committee product release (not funder).
+pub fn is_committee_escrow_release_mode(mode: &str) -> bool {
+    matches!(
+        mode,
+        MODE_THRESHOLD_ESCROW_RELEASE
+            | MODE_THRESHOLD_ESCROW_RELEASE_SIMULATED
+            | MODE_FROST_ESCROW_RELEASE
+            | MODE_FROST_ESCROW_RELEASE_SIMULATED
+            | "frost_escrow_spend"
+            | "frost_escrow_spend_simulated"
+    )
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -446,6 +558,87 @@ mod tests {
             source_pool_id: Some(1),
             path_position: 0,
         })
+    }
+
+    #[test]
+    fn escrow_release_requires_burn_dest_threshold() {
+        use threshold_committee::{LabCommittee, lab_sign_with_threshold};
+        // frost_escrow used below for FE01 path
+
+        let dest = arr32(0xD1);
+        let opening = demo_opening_fixed(dest, 500);
+        let burn = build_egress_burn_from_settle(&opening).unwrap();
+        let evidence = EgressBurnEvidenceV0 {
+            terp_tx_hash: Some("lab".into()),
+            burn: burn.public.clone(),
+            proof_mode: "mock_verify_lab".into(),
+            settle_receipt_ref: None,
+        };
+
+        let committee = LabCommittee::generate(2, 3).unwrap();
+        let digest = threshold_committee::escrow_release_digest(
+            &evidence.burn.nullifier,
+            &evidence.burn.dest_commitment,
+            evidence.burn.value,
+            &evidence.burn.asset_id,
+        );
+        let combined = lab_sign_with_threshold(&committee, &digest).unwrap();
+        let auth = ThresholdEscrowAuth {
+            committee_pk: committee.roster.encode_public().unwrap(),
+            combined_sig: combined.encode(),
+        };
+
+        // Happy path (ECDSA multi-sig TC01)
+        let receipt = authorize_escrow_release(&evidence, &dest, &auth).unwrap();
+        assert_eq!(receipt.mode, MODE_THRESHOLD_ESCROW_RELEASE);
+        assert_eq!(receipt.amount_zat, 500);
+        assert!(!reject_funder_only_as_product(&receipt.mode));
+        assert!(is_committee_escrow_release_mode(&receipt.mode));
+
+        // FROST FE01 path
+        let frost_c = frost_escrow::FrostLabCommittee::dkg(2, 3).unwrap();
+        let frost_digest = threshold_committee::escrow_release_digest(
+            &evidence.burn.nullifier,
+            &evidence.burn.dest_commitment,
+            evidence.burn.value,
+            &evidence.burn.asset_id,
+        );
+        let frost_sig = frost_c.sign_message(&frost_digest).unwrap();
+        let frost_auth = ThresholdEscrowAuth {
+            committee_pk: frost_c.encoded_public.clone(),
+            combined_sig: frost_sig,
+        };
+        let frost_receipt = authorize_escrow_release(&evidence, &dest, &frost_auth).unwrap();
+        assert_eq!(frost_receipt.mode, MODE_FROST_ESCROW_RELEASE);
+        assert!(is_committee_escrow_release_mode(&frost_receipt.mode));
+
+        // Missing burn
+        let mut empty = evidence.clone();
+        empty.burn.nullifier = [0u8; 32];
+        assert_eq!(
+            authorize_escrow_release(&empty, &dest, &auth).unwrap_err(),
+            EscrowReleaseError::MissingBurn
+        );
+
+        // Wrong dest
+        assert_eq!(
+            authorize_escrow_release(&evidence, &arr32(0xEE), &auth).unwrap_err(),
+            EscrowReleaseError::DestMismatch
+        );
+
+        // Bad threshold (empty sig)
+        let bad = ThresholdEscrowAuth {
+            committee_pk: auth.committee_pk.clone(),
+            combined_sig: vec![],
+        };
+        assert_eq!(
+            authorize_escrow_release(&evidence, &dest, &bad).unwrap_err(),
+            EscrowReleaseError::BadThresholdAuth
+        );
+
+        // Funder-only modes are not product escrow release
+        assert!(reject_funder_only_as_product("lab_inventory_pay_simulated"));
+        assert!(reject_funder_only_as_product("ops_funder"));
     }
 
     #[test]

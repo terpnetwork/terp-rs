@@ -69,6 +69,7 @@ members = [
     "contracts/light-clients/cw-ics08-wasm-terp/e2e",
     "contracts/light-clients/cw-ics08-wasm-zap1",
     "contracts/light-clients/cw-ics08-wasm-zap1/e2e",
+    "contracts/light-clients/cw-lc-*",
     "contracts/light-clients/terp-iavl-lc",
     "contracts/nfts/nft-loan",
     "contracts/nfts/nft-loan/e2e",
@@ -386,6 +387,7 @@ cw-ics08-wasm-crosslink = { path = "contracts/light-clients/cw-ics08-wasm-crossl
 cw-ics08-wasm-dregg = { path = "contracts/light-clients/cw-ics08-wasm-dregg", default-features = false }
 cw-ics08-wasm-terp = { path = "contracts/light-clients/cw-ics08-wasm-terp", default-features = false }
 cw-ics08-wasm-zap1 = { path = "contracts/light-clients/cw-ics08-wasm-zap1" }
+cw-lc-registry = { path = "contracts/light-clients/cw-lc-registry", default-features = false }
 cw-infuser = { path = "contracts/infuser/cw-infuser" }
 cw-infuser-scripts = { path = "scripts/cw-infuser", default-features = false }
 cw-infusions = { path = "crates/cw-infusions" }

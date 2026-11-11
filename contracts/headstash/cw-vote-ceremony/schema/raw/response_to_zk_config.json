@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ZkConfig",
+  "type": "object",
+  "required": [
+    "cast_zkid",
+    "dao",
+    "quorum_bps",
+    "require_rvpk_sig",
+    "tally",
+    "threshold_bps",
+    "voting_module",
+    "voting_period"
+  ],
+  "properties": {
+    "anchor_registry": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "cast_circuit_key": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/HexBinary"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "cast_zkid": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "dao": {
+      "$ref": "#/definitions/Addr"
+    },
+    "quorum_bps": {
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "require_rvpk_sig": {
+      "type": "boolean"
+    },
+    "tally": {
+      "$ref": "#/definitions/TallyAuth"
+    },
+    "threshold_bps": {
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "voting_module": {
+      "$ref": "#/definitions/Addr"
+    },
+    "voting_period": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Addr": {
+      "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
+    "HexBinary": {
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "TallyAuth": {
+      "oneOf": [
+        {
+          "description": "32-byte FROST-Ed25519 group key of the election authority (t-of-n off chain).",
+          "type": "object",
+          "required": [
+            "committee"
+          ],
+          "properties": {
+            "committee": {
+              "type": "object",
+              "required": [
+                "group_vk"
+              ],
+              "properties": {
+                "group_vk": {
+                  "$ref": "#/definitions/HexBinary"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "A tally / decryption circuit with TALLY_INSTANCES public inputs.",
+          "type": "object",
+          "required": [
+            "circuit"
+          ],
+          "properties": {
+            "circuit": {
+              "type": "object",
+              "required": [
+                "zkid"
+              ],
+              "properties": {
+                "circuit_key": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/HexBinary"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "zkid": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "svg_auction_private_PrivatePolicyResponse",
+      "type": "struct",
+      "properties": {
+        "bidder_shares": {
+          "value": 1
+        },
+        "commit_domain": {
+          "value": 2
+        },
+        "finalize_threshold": {
+          "value": 1
+        },
+        "memo_domain": {
+          "value": 2
+        },
+        "notes_domain": {
+          "value": 2
+        },
+        "ovk_domain": {
+          "value": 2
+        },
+        "payment_memo_prefix": {
+          "value": 2
+        },
+        "platform_shares": {
+          "value": 1
+        },
+        "reclaim_threshold": {
+          "value": 1
+        },
+        "seller_shares": {
+          "value": 1
+        },
+        "sign_domain": {
+          "value": 2
+        },
+        "total_shares": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "u16",
+      "type": "integer",
+      "precision": 16,
+      "signed": false
+    },
+    {
+      "name": "String",
+      "type": "string"
+    }
+  ]
+}

@@ -113,6 +113,7 @@ pub mod entry {
         svg.packed = Binary::default();
         SVG_COLLECTION.save(deps.storage, &svg)?;
         crate::contract::INSTANTIATOR.save(deps.storage, &info.sender)?;
+        crate::contract::NEXT_TOKEN_ID.save(deps.storage, &0)?;
         // Prefer explicit minter (e.g. hm-nft-minter); default to this contract for
         // self-serve public mint flows.
         let minter = msg
@@ -308,12 +309,25 @@ pub mod entry {
                 crate::contract::DREGG_RUNTIME_MINTERS.save(deps.storage, &addr, &())?;
             }
         }
+        let stored = crate::contract::NEXT_TOKEN_ID.may_load(deps.storage)?;
+        let next_token_id = match (msg.next_token_id, stored) {
+            (Some(n), Some(s)) if n < s => {
+                return Err(StdError::msg(format!(
+                    "next_token_id {n} is below the stored counter {s}"
+                )));
+            }
+            (Some(n), _) => n,
+            (None, Some(s)) => s,
+            (None, None) => crate::contract::next_id_from_tokens(deps.storage)?,
+        };
+        crate::contract::NEXT_TOKEN_ID.save(deps.storage, &next_token_id)?;
         cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
         let event = Event::new("migrate")
             .add_attribute("from_name", prev_version.contract)
             .add_attribute("from_version", prev_version.version)
             .add_attribute("to_name", CONTRACT_NAME)
-            .add_attribute("to_version", CONTRACT_VERSION);
+            .add_attribute("to_version", CONTRACT_VERSION)
+            .add_attribute("next_token_id", next_token_id.to_string());
         Ok(Response::new().add_event(event))
     }
 
@@ -331,6 +345,8 @@ pub mod entry {
     #[cfg(all(target_arch = "wasm32", not(feature = "library")))]
     #[unsafe(no_mangle)]
     pub extern "C" fn cw721_svg_fn_split() -> usize {
+        // wasm32-only caller; a host clippy run drops a module-level import.
+        use cosmwasm_std::from_json;
         let bytes: &[u8] = b"{}";
         let execute = from_json::<ExecuteMsg>(bytes).is_err() as usize;
         let query = from_json::<QueryMsg>(bytes).is_err() as usize;
@@ -571,3 +587,5 @@ mod error {
 mod scribe_tests;
 #[cfg(test)]
 mod svp_tests;
+#[cfg(test)]
+mod token_id_tests;

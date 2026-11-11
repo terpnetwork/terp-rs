@@ -543,9 +543,9 @@ pub fn fixture_amounts() -> (u64, u64, u64) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
 
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
+    /// Shared with the other `CORRIDOR_*` env-mutating harness tests.
+    use crate::harness::omni_lp_seed::CORRIDOR_TEST_ENV_LOCK as ENV_LOCK;
 
     struct EnvGuard {
         keys: Vec<(&'static str, Option<String>)>,

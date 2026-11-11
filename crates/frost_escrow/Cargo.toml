@@ -2,14 +2,29 @@
 name = "frost_escrow"
 version = "0.1.0"
 edition = "2024"
+description = "Thin ZF FROST lab adapter for ZEC escrow auth digests (real DKG+sign; not ECDSA multi-sig; not Zcash consensus spend yet)"
+publish = false
+license = "Apache-2.0 OR MIT"
+
+[lib]
+path = "src/lib.rs"
 
 [features]
 default = ["frost"]
-frost = ["dep:frost-ed25519"]
+# Real ZF FROST (frost-ed25519). Disable only for interface-only builds.
+frost = ["dep:frost-ed25519", "dep:rand_core06"]
 
 [dependencies]
-thiserror = "2"
-sha2 = "0.10"
-hex = "0.4"
+# Domain digests shared with lab multi-sig path (Object A).
+# Path dep (not workspace) so wasm users can drop threshold_committee/lab.
+threshold_committee = { path = "../threshold_committee", default-features = false }
+thiserror = { workspace = true }
+sha2 = { workspace = true, features = ["std"] }
+hex = { workspace = true, features = ["std"] }
+# ZF FROST — do not invent threshold Schnorr.
+frost-ed25519 = { workspace = true, optional = true, features = ["std", "serialization"] }
+rand_core06 = { workspace = true, optional = true, features = ["getrandom"] }
+
+[dev-dependencies]
+# timing bench (tests/timing.rs) compares against the TC01 lab committee.
 threshold_committee = { path = "../threshold_committee" }
-frost-ed25519 = { version = "2.1", optional = true }

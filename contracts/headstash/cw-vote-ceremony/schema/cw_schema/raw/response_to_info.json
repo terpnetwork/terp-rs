@@ -1,0 +1,31 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_vote_ceremony_zk_InfoResponse",
+      "type": "struct",
+      "properties": {
+        "info": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "cw_vote_ceremony_zk_ContractVersion",
+      "type": "struct",
+      "properties": {
+        "contract": {
+          "value": 2
+        },
+        "version": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    }
+  ]
+}
