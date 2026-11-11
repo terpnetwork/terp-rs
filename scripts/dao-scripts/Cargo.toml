@@ -112,6 +112,10 @@ name = "svg_ops"
 path = "src/bin/svg_ops.rs"
 
 [[bin]]
+name = "cw721_svg_burn_fix"
+path = "src/bin/cw721_svg_burn_fix.rs"
+
+[[bin]]
 name = "svg_curator"
 path = "src/bin/svg_curator.rs"
 
