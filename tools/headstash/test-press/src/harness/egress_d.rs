@@ -19,7 +19,7 @@ use terp_seams::dex::{
     DestKind as PureDestKind, EGRESS_NF_LABEL, EgressBurnEvidenceV0 as PureEvidence,
     EgressBurnPublic, EgressError, EgressSeamState, SettleLikeOpening, SwapActionV0,
     ZecEgressReceiptV0 as PureZecReceipt, apply_egress_burn, build_egress_burn_from_settle,
-    egress_nullifier,
+    egress_nullifier, reject_funder_only_as_product,
 };
 
 use super::lab_pay_zec::{
@@ -32,6 +32,8 @@ pub use super::lab_pay_zec::{
     dest_kind_from_display, wallet_rpc_available,
 };
 use super::mint_evidence::{MintEvidenceError, SettleReceiptV0, hex32};
+#[cfg(test)]
+use super::mint_evidence::decode_hex32;
 use super::swap_statement_cw::{SwapSpendHandoffV0, lab_asset_out_zec};
 use super::zakura_local::{
     SealedDestSource, SealedDestV0, ZakuraLocalConfig, assert_dest_binding_equal,
@@ -812,6 +814,13 @@ mod tests {
             ENV_CORRIDOR_ALLOW_LAB_INVENTORY_RESIDUAL, ENV_CORRIDOR_PROFILE,
             ENV_CORRIDOR_ZEC_RELEASE,
         };
+        // Hold the crate-wide env lock for the whole test: omni/lab_pay tests in
+        // other modules pin CORRIDOR_* concurrently, which flipped the resolved
+        // release mode to `frost_escrow_spend_simulated` under `cargo test`.
+        let _env_lock = crate::harness::omni_lp_seed::CORRIDOR_TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let prev_force_sim = std::env::var("CORRIDOR_LAB_ZEC_FORCE_SIMULATED").ok();
         let prev_release = std::env::var(ENV_CORRIDOR_ZEC_RELEASE).ok();
         let prev_profile = std::env::var(ENV_CORRIDOR_PROFILE).ok();
         let prev_residual = std::env::var(ENV_CORRIDOR_ALLOW_LAB_INVENTORY_RESIDUAL).ok();
@@ -907,6 +916,10 @@ mod tests {
             match prev_residual {
                 Some(v) => std::env::set_var(ENV_CORRIDOR_ALLOW_LAB_INVENTORY_RESIDUAL, v),
                 None => std::env::remove_var(ENV_CORRIDOR_ALLOW_LAB_INVENTORY_RESIDUAL),
+            }
+            match prev_force_sim {
+                Some(v) => std::env::set_var("CORRIDOR_LAB_ZEC_FORCE_SIMULATED", v),
+                None => std::env::remove_var("CORRIDOR_LAB_ZEC_FORCE_SIMULATED"),
             }
         }
     }
@@ -1021,9 +1034,20 @@ mod tests {
             BURN_SURFACE_PURE_RECORD_LAB,
             MODE_LAB_INVENTORY_PAY_SIMULATED
         ));
-        assert!(!product_celebrate_forbidden(
+        // Inventory funder modes never celebrate as product, on any surface
+        // (SSOT: reject_funder_only_as_product, R3/R5). The CW egress surface
+        // celebrates only committee release modes.
+        assert!(product_celebrate_forbidden(
             BURN_SURFACE_CW_BRIDGE_EGRESS,
             MODE_LAB_INVENTORY_PAY
+        ));
+        assert!(!product_celebrate_forbidden(
+            BURN_SURFACE_CW_BRIDGE_EGRESS,
+            terp_seams::dex::MODE_THRESHOLD_ESCROW_RELEASE
+        ));
+        assert!(!product_celebrate_forbidden(
+            BURN_SURFACE_CW_BRIDGE_EGRESS,
+            terp_seams::dex::MODE_FROST_ESCROW_RELEASE
         ));
         assert!(assert_lab_degrade_labels("zec_sent", MODE_LAB_INVENTORY_PAY).is_err());
         assert!(assert_lab_degrade_labels(BURN_SURFACE_PURE_RECORD_LAB, "").is_err());
