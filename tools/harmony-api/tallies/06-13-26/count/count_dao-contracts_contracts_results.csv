@@ -1,0 +1,19 @@
+File Location,Count
+./dao-contracts/contracts/test/dao-proposal-hook-counter/Cargo.toml,2
+./dao-contracts/contracts/test/dao-proposal-hook-counter/src/tests.rs,12
+./dao-contracts/contracts/test/dao-proposal-sudo/README,1
+./dao-contracts/contracts/test/dao-proposal-sudo/src/state.rs,1
+./dao-contracts/contracts/test/dao-proposal-sudo/src/contract.rs,4
+./dao-contracts/contracts/test/dao-test-custom-factory/README,1
+./dao-contracts/contracts/test/dao-test-custom-factory/src/contract.rs,17
+./dao-contracts/contracts/test/dao-test-custom-factory/src/msg.rs,1
+./dao-contracts/contracts/test/dao-voting-cw20-balance/Cargo.toml,2
+./dao-contracts/contracts/test/dao-voting-cw20-balance/src/state.rs,1
+./dao-contracts/contracts/test/dao-voting-cw20-balance/src/contract.rs,3
+./dao-contracts/contracts/test/dao-voting-cw20-balance/src/tests.rs,36
+./dao-contracts/contracts/pre-propose/dao-pre-propose-multiple/Cargo.toml,2
+./dao-contracts/contracts/pre-propose/dao-pre-propose-multiple/README.md,5
+./dao-contracts/contracts/pre-propose/dao-pre-propose-multiple/schema/dao-pre-propose-multiple.json,11
+./dao-contracts/contracts/pre-propose/dao-pre-propose-multiple/src/tests.rs,26
+./dao-contracts/contracts/pre-propose/dao-pre-propose-approval-single/Cargo.toml,2
+./dao-contracts/contracts/pre-propose/dao-pre-propose-approval-single/README.md,6

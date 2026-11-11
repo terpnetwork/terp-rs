@@ -1,0 +1,17 @@
+File Location,Count
+./dao-contracts/packages/dao-hooks/Cargo.toml,1
+./dao-contracts/packages/dao-hooks/README.md,3
+./dao-contracts/packages/dao-hooks/src/all_hooks.rs,1
+./dao-contracts/packages/dao-dao-macros/Cargo.toml,1
+./dao-contracts/packages/dao-dao-macros/README.md,2
+./dao-contracts/packages/dao-dao-macros/src/lib.rs,2
+./dao-contracts/packages/dao-voting/Cargo.toml,1
+./dao-contracts/packages/dao-voting/README.md,2
+./dao-contracts/packages/dao-voting/src/deposit.rs,1
+./dao-contracts/packages/dao-voting/src/pre_propose.rs,3
+./dao-contracts/packages/cw-hooks/README.md,1
+./dao-contracts/packages/dao-pre-propose-base/README.md,2
+./dao-contracts/packages/dao-pre-propose-base/src/execute.rs,4
+./dao-contracts/packages/dao-pre-propose-base/src/state.rs,1
+./dao-contracts/packages/dao-pre-propose-base/src/msg.rs,5
+./dao-contracts/packages/dao-pre-propose-base/src/tests.rs,4
