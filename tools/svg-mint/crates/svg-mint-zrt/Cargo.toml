@@ -1,30 +1,30 @@
 [package]
 name = "svg-mint-zrt"
 version = "0.1.0"
-edition.workspace = true
+edition = "2021"
 license = "AGPL-3.0-or-later"
-rust-version.workspace = true
-description = "Durable Ironwood wallet for the SVG mint desk. Never zec.rocks. Never zcash-devtool."
+rust-version = "1.86.0"
+description = "Product ZEC wallet CLI for the SVG mint desk. Compact server required; never zec.rocks."
 
-[lib]
-name = "svg_mint_zrt"
-path = "src/lib.rs"
+# Standalone: excluded from the terp-rs root workspace. The deployed wallet stack
+# (zakura-orchard =1.0.0, tonic 0.11, zcli zync-core / zcash-wasm) does not fit the
+# root workspace pins yet. zcli lives at terp-core/crates/zcli.
+[workspace]
 
 [[bin]]
 name = "svg-mint-zrt"
 path = "src/main.rs"
 
-[features]
-# Test-only note credit and local spend commit. The default binary cannot fake a balance or a send.
-lab = []
-
 [dependencies]
-blake3 = { workspace = true }
-getrandom = { workspace = true, features = ["std"] }
-hex = { workspace = true }
-orchard = { workspace = true }
-rusqlite = { workspace = true }
-serde_json = { workspace = true }
-zcash_address = { workspace = true }
-zcash_protocol = { workspace = true }
-zip3203 = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+tonic = "0.11"
+orchard = { package = "zakura-orchard", version = "=1.0.0", default-features = false, features = ["circuit"] }
+zafu-wasm = { path = "../../../../../zcli/crates/zcash-wasm", default-features = false }
+serde_json = "1"
+hex = "0.4"
+tokio = { version = "1", features = ["rt", "net", "time", "io-util", "sync"] }
+zync-core = { path = "../../../../../zcli/crates/zync-core", default-features = false, features = ["client"] }
+zcash_address = { version = "0.13", default-features = false }
+zcash_protocol = { version = "0.10.6", default-features = false }
+rusqlite = { version = "0.31", features = ["bundled"] }
+dregg = { path = "../dregg" }

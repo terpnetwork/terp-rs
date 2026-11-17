@@ -1,13 +1,13 @@
 ---
 title: Wallet runtime
-description: One ZEC seed on disk. Scan and prover are not linked.
+description: One ZEC seed on disk. Addresses and Ironwood scan are linked. The prover is not.
 ---
 
 # Wallet runtime
 
-`svg-mint-zrt` is the ZEC CLI the fed execs for `notes` and for withdraw. It does not import zcli, `zync-core`, or `zcash-devtool`. zec.rocks and rotko are not this desk.
+`svg-mint-zrt` is the ZEC CLI the fed execs for `addresses`, `notes`, and withdraw. It derives unified addresses from `zync-core`'s Orchard viewing key. It does not exec `zcash-devtool`. zec.rocks and rotko are not this desk.
 
-The house does not have this binary installed. The fed note watch no-ops when the file is missing. Withdraw returns `svg-mint-zrt missing`. That is fail-closed. Do not `init` `~/.terp/svg-mint-zrt` to fill the gap. Read [Wallet gaps](/engines/wallet-gaps).
+On groot2 the binary is installed and the wallet directory `~/.terp/svg-mint-zrt` already exists. `addresses` created that seed once. Do not delete it and do not replace it. A new seed cannot recover notes from older wallet-devtools wallets. Read [Wallet gaps](/engines/wallet-gaps).
 
 `scripts/e2e-zrt-wallet.sh` is the persistence gate. It passed on groot-wan against a temporary `SVG_MINT_ZRT_DIR`. It does not prove scan, trial decryption, or a spend.
 
@@ -22,9 +22,9 @@ svg-mint-zrt sync
 svg-mint-zrt send --zat <n> --address <u1…>
 ```
 
-`init` is the only command that creates `spend.seed`. A second `init` fails. The printed address is an Orchard receiver, not an Ironwood payment address. Do not publish it as a pay target.
+`addresses <index>` prints one mainnet unified address for that diversifier and does not scan. The first call creates `spend.seed` and `orchard-fvk` if they are absent, mode `0600`, and refuses to replace an existing seed. The address is an Orchard receiver from that same viewing key. Ironwood reuses Orchard receivers, and the note scanner trial-decrypts with this key. This is the pay target the desk puts in the ZIP-321 URI.
 
-`notes` is the fed's checkout match. `mined: false` is a receipt. `mined: true` may mint. `sync` exits without changing the ledger. `send` refuses any destination except the donation UA, then exits because the prover is not linked. Notes stay unspent.
+`notes` syncs Ironwood compact blocks from the loopback server, then prints the note JSON the fed matches. `mined: false` is a receipt. `mined: true` may mint. `send` refuses any destination except the donation UA, then stops because the spend prover is not linked. Notes stay unspent.
 
 `lab-credit` and `lab-commit-spend` exist only with `--features lab`.
 
@@ -32,8 +32,8 @@ svg-mint-zrt send --zat <n> --address <u1…>
 
 | Name | Purpose |
 |---|---|
-| `SVG_MINT_ZRT_BIN` | Path the fed execs. Unset on the house, so the fed looks at `target/release/svg-mint-zrt`, which is absent. |
-| `SVG_MINT_ZRT_DIR` | Wallet directory. Unset means `~/.terp/svg-mint-zrt`. Do not create it on the house with this build. |
-| `ZTREAMER_GRPC` | Intended compact host. This build does not dial it. |
+| `SVG_MINT_ZRT_BIN` | Path the fed execs. The house unit sets `target/release/svg-mint-zrt`. |
+| `ZCASH_DEVTOOL_WALLET` | Wallet directory. The house unit sets `~/.terp/svg-mint-zrt`. |
+| `ZTREAMER_GRPC` | Loopback compact server. The house unit sets `127.0.0.1:9067` (`lwd-lab`). |
 
-`ZCASH_DEVTOOL_WALLET` is not read.
+`addresses` does not dial the compact server. `notes` does.

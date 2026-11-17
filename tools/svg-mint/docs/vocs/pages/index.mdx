@@ -9,7 +9,7 @@ import { Card, Cards } from 'vocs'
 
 The mint desk is static HTML. The browser talks HTTPS to DREGG and, when it is up, to HashMerchant. It never talks to Zakura or to the compact server.
 
-The lean ZEC path is two calls inside DREGG: `svg-mint-zrt notes`, and Zakura's shielded mempool. zcashd and zcli are not observers. Scan and the spend prover are still unlinked. A paid mint is signed by `~/.terp/dregg-svg-runtime.sk` (`terp1z4zc83jvff6w5d6dap23nl75ah9f5s828na3z8` on `/health` as `runtime_minter`) and broadcast only to a collection that simulate has admitted. The desk collection is the code-98 fractal. Logos stay off the list. The house list is still empty, so Pay is closed (`collections_unset`) and the signer is idle. ZEC for that fractal is a fixed zat amount per tier (`DREGG_FRACTAL_ZEC_ZAT`), chosen from on-chain `num_tokens`.
+The lean ZEC path is two calls inside DREGG: `svg-mint-zrt notes`, and Zakura's shielded mempool. zcashd and zcli are not observers. Scan and the spend prover are still unlinked. A paid mint is signed by `~/.terp/dregg-svg-runtime.sk` (`terp1z4zc83jvff6w5d6dap23nl75ah9f5s828na3z8` on `/health` as `runtime_minter`) and broadcast only to a collection that simulate has admitted. The configured list is `DREGG_COLLECTIONS` or `~/.terp/dregg-svg-collections`. That list is empty, so Pay is closed (`collections_unset`) and the signer is idle.
 
 <Cards>
   <Card title="Architecture" description="Lean tick, keys that must survive restart." to="/engines/architecture" />

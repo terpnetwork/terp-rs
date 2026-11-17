@@ -36,23 +36,6 @@ pub fn withdraw_statement(zat: u64, ua: &str, challenge_hex: &str) -> String {
     format!("permissionless.money withdraw {zat} zat to {ua} {challenge_hex}")
 }
 
-/// Keplr bytes for pushing a mint or refunding a paid checkout that never minted.
-/// Not the withdraw sentence, and not the sign-in challenge bytes.
-pub fn checkout_statement(action: &str, terp: &str, challenge_hex: &str) -> Result<String, String> {
-    if action != "mint-to" && action != "refund" {
-        return Err("checkout action is mint-to or refund".into());
-    }
-    if !terp.starts_with("terp1") || terp.chars().any(|c| c.is_whitespace()) {
-        return Err("checkout terp".into());
-    }
-    if challenge_hex.is_empty() || challenge_hex.chars().any(|c| c.is_whitespace()) {
-        return Err("checkout challenge".into());
-    }
-    Ok(format!(
-        "permissionless.money {action} {terp} {challenge_hex}"
-    ))
-}
-
 pub fn sign_doc_json(chain_id: &str, signer: &str, data: &[u8]) -> String {
     let data_b64 = b64(data);
     format!(
@@ -262,36 +245,5 @@ mod tests {
         );
         assert!(doc.contains("cGVybWlzc2lvbmxlc3MubW9uZXkgd2l0aGRyYXcgMjkwMDAw"));
         assert!(doc.contains("\"chain_id\":\"\""));
-    }
-
-    #[test]
-    fn checkout_statement_is_not_a_withdraw_or_a_sign_in() {
-        let challenge = "8fea0767dd928658ca128e3d4ee365c8eec6578cb8b0349ed05a204730949b92";
-        let terp = "terp1fc34h3q2af5lxdy2f4h7eq2h7smlerpsyz0zar";
-        let mint = checkout_statement("mint-to", terp, challenge).unwrap();
-        let refund = checkout_statement("refund", terp, challenge).unwrap();
-        let withdraw = withdraw_statement(100, DONATE_ZEC_UA, challenge);
-        assert_ne!(mint, withdraw);
-        assert_ne!(refund, withdraw);
-        assert_ne!(mint, refund);
-        assert!(mint.starts_with("permissionless.money mint-to "));
-        assert!(checkout_statement("withdraw", terp, challenge).is_err());
-        assert!(checkout_statement("mint-to", "not-a-terp", challenge).is_err());
-        let mut secret = [0u8; 32];
-        secret[31] = 1;
-        let (signer, pk, sig) = sign_keplr_arbitrary(&secret, "", mint.as_bytes()).unwrap();
-        verify_keplr_arbitrary("morocco-1", &signer, mint.as_bytes(), &pk, &sig).unwrap();
-        let crossed = verify_keplr_arbitrary("morocco-1", &signer, withdraw.as_bytes(), &pk, &sig);
-        assert!(crossed.is_err());
-        let raw = hex_ok(challenge);
-        let crossed_in = verify_keplr_arbitrary("morocco-1", &signer, &raw, &pk, &sig);
-        assert!(crossed_in.is_err());
-    }
-
-    fn hex_ok(s: &str) -> Vec<u8> {
-        (0..s.len())
-            .step_by(2)
-            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
-            .collect()
     }
 }

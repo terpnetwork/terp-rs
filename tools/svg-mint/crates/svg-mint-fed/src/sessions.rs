@@ -96,13 +96,25 @@ impl Log {
         self.save();
     }
 
-    pub fn open_row(&self, terp: &str) -> Option<&SessionRow> {
-        self.rows.iter().rev().find(|r| {
-            r.terp == terp && r.phase != "settled" && r.phase != "expired" && r.phase != "refunded"
-        })
+    /// Row by id, else the newest row for this address.
+    pub fn find(&self, terp: &str, id: Option<u64>) -> Option<SessionRow> {
+        self.rows
+            .iter()
+            .rev()
+            .find(|r| r.terp == terp && id.map_or(true, |i| r.id == i))
+            .cloned()
     }
 
-    /// Refund a checkout that has not minted. A token id means a mint was recorded.
+    pub fn set_row(&mut self, id: u64, phase: &str, txid: &str, token_id: &str) {
+        if let Some(r) = self.rows.iter_mut().find(|r| r.id == id) {
+            r.phase = phase.into();
+            r.txid = txid.into();
+            r.token_id = token_id.into();
+            r.at = now();
+            self.save();
+        }
+    }
+
     pub fn refund(&mut self, terp: &str) -> bool {
         let Some(row) = self.rows.iter_mut().rev().find(|r| {
             r.terp == terp
@@ -113,32 +125,7 @@ impl Log {
         }) else {
             return false;
         };
-        if !row.token_id.is_empty() {
-            return false;
-        }
         row.phase = "refunded".into();
-        row.token_id.clear();
-        row.at = now();
-        self.save();
-        true
-    }
-
-    /// Settled only when `terp_tx` is a 64-hex chain hash. A failed broadcast does not qualify.
-    pub fn record_chain_mint(&mut self, terp: &str, terp_tx: &str) -> bool {
-        if terp_tx.len() != 64 || !terp_tx.chars().all(|c| c.is_ascii_hexdigit()) {
-            return false;
-        }
-        let Some(row) = self
-            .rows
-            .iter_mut()
-            .rev()
-            .find(|r| r.terp == terp && r.phase == "entitled" && r.token_id.is_empty())
-        else {
-            return false;
-        };
-        row.phase = "settled".into();
-        row.txid = terp_tx.to_string();
-        row.token_id = terp_tx.to_string();
         row.at = now();
         self.save();
         true

@@ -1107,3 +1107,195 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 }
+
+/// Sponsor path, browser broadcast. Signs (does NOT broadcast) one tx from the runtime key:
+/// MsgExec{grantee: runtime, msgs: [MsgGrantAllowance{granter, grantee, AllowedMsgAllowance{BasicAllowance}}]}.
+/// `granter` must have given the runtime an authz grant for MsgGrantAllowance; the tx is
+/// simulated first so a missing grant fails here. The caller's browser broadcasts the bytes.
+pub fn presign_feegrant_exec(
+    granter: &str,
+    grantee: &str,
+    spend_uthiol: u128,
+    expires_unix: u64,
+    allowed: &[&str],
+) -> Result<serde_json::Value, String> {
+    presign_feegrant_inner(granter, grantee, spend_uthiol, expires_unix, allowed, true)
+}
+
+/// Minter uthiol balance and the direct-mode threshold (ONBOARD_DIRECT_MIN_UTHIOL, default 5 THIOL).
+pub fn sponsor_status() -> serde_json::Value {
+    let threshold: u128 = std::env::var("ONBOARD_DIRECT_MIN_UTHIOL")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(5_000_000);
+    let runtime = read_secret().ok().and_then(|s| address_of(&s).ok());
+    let bal = runtime
+        .as_deref()
+        .and_then(|r| minter_balance_uthiol(r).ok());
+    let mode = match bal {
+        Some(b) if b >= threshold => "direct",
+        Some(_) => "authz-failover",
+        None => "unknown",
+    };
+    serde_json::json!({
+        "minter": runtime,
+        "minter_balance_uthiol": bal.map(|b| b.to_string()),
+        "direct_min_uthiol": threshold.to_string(),
+        "mode": mode,
+        "authz": "failover",
+    })
+}
+
+fn minter_balance_uthiol(addr: &str) -> Result<u128, String> {
+    let lcd = lcd_base()?;
+    let v = crate::httpx::get_json(&format!(
+        "{lcd}/cosmos/bank/v1beta1/balances/{addr}/by_denom?denom=uthiol"
+    ))?;
+    v.get("balance")
+        .and_then(|b| b.get("amount"))
+        .and_then(|a| a.as_str())
+        .and_then(|a| a.parse().ok())
+        .ok_or_else(|| "balance unreadable".to_string())
+}
+
+/// Sponsor mode: the minter (runtime key) grants from its own balance when it holds at least
+/// ONBOARD_DIRECT_MIN_UTHIOL; authz MsgExec on behalf of `authz_granter` is the failover when
+/// the balance is low or the direct grant fails simulation.
+pub fn presign_feegrant_auto(
+    authz_granter: &str,
+    grantee: &str,
+    spend_uthiol: u128,
+    expires_unix: u64,
+    allowed: &[&str],
+) -> Result<serde_json::Value, String> {
+    let st = sponsor_status();
+    let minter = st
+        .get("minter")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .to_string();
+    let mut why = String::from("minter balance below threshold");
+    if st.get("mode").and_then(|x| x.as_str()) == Some("direct") && minter.starts_with("terp1") {
+        match presign_feegrant_inner(&minter, grantee, spend_uthiol, expires_unix, allowed, false) {
+            Ok(mut v) => {
+                v["mode"] = serde_json::json!("direct");
+                v["minter_balance_uthiol"] = st["minter_balance_uthiol"].clone();
+                return Ok(v);
+            }
+            Err(e) => why = format!("direct grant failed: {e}"),
+        }
+    } else if st.get("mode").and_then(|x| x.as_str()) == Some("unknown") {
+        why = "minter balance unknown".into();
+    }
+    let mut v = presign_feegrant_inner(
+        authz_granter,
+        grantee,
+        spend_uthiol,
+        expires_unix,
+        allowed,
+        true,
+    )
+    .map_err(|e| format!("{e}; failover reason: {why}"))?;
+    v["mode"] = serde_json::json!("authz-failover");
+    v["failover_reason"] = serde_json::json!(why);
+    v["minter_balance_uthiol"] = st["minter_balance_uthiol"].clone();
+    Ok(v)
+}
+
+fn presign_feegrant_inner(
+    granter: &str,
+    grantee: &str,
+    spend_uthiol: u128,
+    expires_unix: u64,
+    allowed: &[&str],
+    via_exec: bool,
+) -> Result<serde_json::Value, String> {
+    if !grantee.starts_with("terp1") || !granter.starts_with("terp1") {
+        return Err("granter and grantee must be terp1".into());
+    }
+    let secret = read_secret()?;
+    let sk = SigningKey::from_slice(&secret).map_err(|e| e.to_string())?;
+    let runtime = address_of(&secret)?;
+    let lcd = lcd_base()?;
+    let acct = crate::httpx::get_json(&format!("{lcd}/cosmos/auth/v1beta1/accounts/{runtime}"))?;
+    let (account_number, sequence) = account_number_sequence(&acct)?;
+    let mut basic = ld(1, &coin_msg("uthiol", &spend_uthiol.to_string()));
+    basic.extend(ld(2, &vi(1, expires_unix)));
+    let mut allowed_msg = ld(1, &any("/cosmos.feegrant.v1beta1.BasicAllowance", &basic));
+    for a in allowed {
+        allowed_msg.extend(ld(2, a.as_bytes()));
+    }
+    let mut grant = ld(1, granter.as_bytes());
+    grant.extend(ld(2, grantee.as_bytes()));
+    grant.extend(ld(
+        3,
+        &any("/cosmos.feegrant.v1beta1.AllowedMsgAllowance", &allowed_msg),
+    ));
+    let body = if via_exec {
+        let mut exec = ld(1, runtime.as_bytes());
+        exec.extend(ld(
+            2,
+            &any("/cosmos.feegrant.v1beta1.MsgGrantAllowance", &grant),
+        ));
+        ld(1, &any("/cosmos.authz.v1beta1.MsgExec", &exec))
+    } else {
+        if granter != runtime {
+            return Err("direct grant must come from the minter".into());
+        }
+        ld(
+            1,
+            &any("/cosmos.feegrant.v1beta1.MsgGrantAllowance", &grant),
+        )
+    };
+    let gas: u64 = std::env::var("ONBOARD_GRANT_GAS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(200_000);
+    let fee = fee_uthiol(gas);
+    let pk = sk.verifying_key().to_sec1_point(true);
+    let pk_any = any(PK_TYPE, &ld(1, pk.as_bytes()));
+    let mut signer = ld(1, &pk_any);
+    signer.extend(ld(2, &mode_direct()));
+    signer.extend(vi(3, sequence));
+    let mut feeb = ld(1, &coin_msg("uthiol", &fee.to_string()));
+    feeb.extend(vi(2, gas));
+    let mut auth = ld(1, &signer);
+    auth.extend(ld(2, &feeb));
+    let sig = sign_direct(&sk, &body, &auth, &chain_id(), account_number)?;
+    let mut raw = ld(1, &body);
+    raw.extend(ld(2, &auth));
+    raw.extend(ld(3, &sig));
+    let tx_b64 = b64(&raw);
+    let sim = crate::httpx::post_json(
+        &format!("{lcd}/cosmos/tx/v1beta1/simulate"),
+        &serde_json::json!({ "tx_bytes": tx_b64 }),
+    )?;
+    if sim.get("gas_info").is_none() {
+        let msg = sim
+            .get("message")
+            .and_then(|x| x.as_str())
+            .unwrap_or("simulate failed");
+        let hint = if msg.contains("authorization not found") {
+            " (granter has not authorized the runtime: sign the Minter authz grant in /ops)"
+        } else {
+            ""
+        };
+        return Err(format!(
+            "sponsor grant would fail: {}{hint}",
+            clip_reason(msg)
+        ));
+    }
+    Ok(serde_json::json!({
+        "tx_bytes": tx_b64,
+        "via_exec": via_exec,
+        "signer": runtime,
+        "granter": granter,
+        "grantee": grantee,
+        "sequence": sequence,
+        "gas": gas,
+        "fee_uthiol": fee.to_string(),
+        "spend_limit_uthiol": spend_uthiol.to_string(),
+        "expires": expires_unix,
+        "allowed_messages": allowed,
+    }))
+}

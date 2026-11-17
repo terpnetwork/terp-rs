@@ -14,7 +14,7 @@ path = "src/main.rs"
 blake3 = { workspace = true, features = ["std", "pure"] }
 dregg = { workspace = true }
 ed25519-dalek = { workspace = true, features = ["std"] }
-hash-market = { workspace = true, features = ["server", "pallas"] }
+terp-onboard-authz = { workspace = true }
 hex = { workspace = true, features = ["std"] }
 rand = { workspace = true, features = ["std", "thread_rng"] }
 serde = { workspace = true, features = ["std"] }

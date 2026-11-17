@@ -24,6 +24,8 @@ pub struct ZecWallet {
     pub compact_server: Option<String>,
     pub error: Option<String>,
     pub stale: bool,
+    /// pending / synced_height / birthday / synced_at / unspent_notes from the in-process wallet.
+    pub extra: Value,
 }
 
 impl ZecWallet {
@@ -46,6 +48,12 @@ impl ZecWallet {
             "compact_server": self.compact_server,
             "error": self.error,
             "stale": self.stale,
+            "pending_zat": self.extra.get("pending"),
+            "synced_height": self.extra.get("synced_height"),
+            "birthday": self.extra.get("birthday"),
+            "synced_at": self.extra.get("synced_at"),
+            "unspent_notes": self.extra.get("unspent_notes"),
+            "engine": self.extra.get("engine"),
         })
     }
 }
@@ -55,8 +63,7 @@ pub fn ironwood_spendable_from_notes(notes: &[Value]) -> u64 {
     notes.iter().fold(0u64, |acc, n| {
         let mined = n.get("mined").and_then(|m| m.as_bool()).unwrap_or(false);
         let pool = n.get("pool").and_then(|p| p.as_str()).unwrap_or("ironwood");
-        let spent = n.get("spent").and_then(|s| s.as_bool()).unwrap_or(false);
-        if !mined || spent || !pool.eq_ignore_ascii_case("ironwood") {
+        if !mined || !pool.eq_ignore_ascii_case("ironwood") {
             return acc;
         }
         let zat = n.get("zat").and_then(|z| z.as_u64()).unwrap_or(0);
@@ -116,6 +123,7 @@ pub fn parse_balance_json(raw: &str) -> Result<ZecWallet, String> {
         compact_server: compact_server_opt(),
         error: None,
         stale: false,
+        extra: v.clone(),
     })
 }
 
@@ -132,6 +140,7 @@ fn failed(err: impl Into<String>) -> ZecWallet {
         compact_server: compact_server_opt(),
         error: Some(err.into()),
         stale: false,
+        extra: Value::Null,
     }
 }
 
@@ -281,7 +290,6 @@ mod tests {
             json!({"pool":"ironwood","mined":true,"zat":150000}),
             json!({"pool":"orchard","mined":true,"zat":900000}),
             json!({"pool":"ironwood","mined":false,"zat":50000}),
-            json!({"pool":"ironwood","mined":true,"spent":true,"zat":900000}),
         ];
         assert_eq!(ironwood_spendable_from_notes(&notes), 150000);
     }

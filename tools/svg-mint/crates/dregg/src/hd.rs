@@ -40,12 +40,38 @@ impl HdEngine {
                 }
             }
         }
+        if std::path::Path::new(&seed_path).exists() {
+            eprintln!(
+                "svg-mint-fed: {seed_path} exists but is unreadable or invalid; refusing to replace it"
+            );
+            std::process::exit(78);
+        }
+        if std::env::var("DREGG_HD_ALLOW_NEW").ok().as_deref() != Some("1") {
+            eprintln!(
+                "svg-mint-fed: no HD seed at {seed_path}; refusing to create a new one (set DREGG_HD_ALLOW_NEW=1 for first setup)"
+            );
+            std::process::exit(78);
+        }
         let mut seed = vec![0u8; 32];
         rand::rng().fill_bytes(&mut seed);
-        eprintln!(
-            "svg-mint-fed wrote a new hd seed file at {seed_path}; the seed value is not logged"
-        );
-        let _ = std::fs::write(&seed_path, hex::encode(&seed));
+        eprintln!("svg-mint-fed generated DREGG_HD_SEED (not printed); persist {seed_path}");
+        let mut o = std::fs::OpenOptions::new();
+        o.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            o.mode(0o600);
+        }
+        match o.open(&seed_path) {
+            Ok(mut f) => {
+                use std::io::Write;
+                let _ = f.write_all(hex::encode(&seed).as_bytes());
+            }
+            Err(e) => {
+                eprintln!("svg-mint-fed: could not persist HD seed: {e}");
+                std::process::exit(78);
+            }
+        }
         Self { seed }
     }
 
@@ -214,7 +240,7 @@ pub fn addr_from_mnemonic_file(kind: &str) -> Result<String, String> {
 
 // CLOSE Linus 11: convert_bits / bech32_polymod / hrp_expand deleted (unused; encode_segwit uses bech32).
 
-/// BIP173 Bech32 for witness v0. Witness v1 and above use Bech32m.
+/// BIP173 Bech32 (not Bech32m). Crate 0.9 matches bitcoin/bitcoin:29 for witness v0.
 fn encode_segwit(hrp: &str, witver: u8, prog: &[u8]) -> Result<String, String> {
     if witver > 16 {
         return Err("witver".into());

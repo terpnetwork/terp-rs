@@ -20,7 +20,6 @@ use serde_json::json;
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 mod sessions;
@@ -205,9 +204,34 @@ fn main() {
         } else {
             format!("{host}:{port}")
         };
-        let runtime = std::sync::Arc::new(hash_market::onboard_authz::OnboardRuntime::from_env());
+        let mut rt = terp_onboard_authz::OnboardRuntime::from_env();
+        if std::env::var("ONBOARD_SPONSOR_MODE").ok().as_deref() == Some("browser") {
+            let granter = rt.roles.runtime.clone();
+            let limit: u128 = std::env::var("ONBOARD_SPEND_LIMIT")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or_else(|| dregg::mint_tx::fee_uthiol(500_000));
+            let ttl: u64 = std::env::var("ONBOARD_GRANT_TTL_SECS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(3600);
+            rt.presign = Some(Box::new(move |grantee: &str| {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                dregg::mint_tx::presign_feegrant_auto(
+                    &granter,
+                    grantee,
+                    limit,
+                    now + ttl,
+                    terp_onboard_authz::ALLOWED_MSG_TYPES,
+                )
+            }));
+        }
+        let runtime = std::sync::Arc::new(rt);
         eprintln!("onboard listening {obind}");
-        if let Err(e) = hash_market::onboard_authz::http::serve(&obind, runtime) {
+        if let Err(e) = terp_onboard_authz::http::serve(&obind, runtime) {
             eprintln!("onboard serve {e}");
         }
     });
@@ -434,32 +458,21 @@ fn issue_pay_target(
     }))
 }
 
-fn zrt_bin() -> String {
-    if let Ok(b) = std::env::var("SVG_MINT_ZRT_BIN") {
-        if !b.is_empty() {
-            return b;
-        }
-    }
-    let sibling =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/release/svg-mint-zrt");
-    sibling.to_string_lossy().into_owned()
-}
-
 fn diversified_zec_ua(index: u32) -> Option<String> {
-    let _ = index;
-    let bin = zrt_bin();
+    let bin = std::env::var("SVG_MINT_ZRT_BIN")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| {
+            "/home/returniflost/abstract/svg-mint/target/release/svg-mint-zrt".into()
+        });
     if !std::path::Path::new(&bin).is_file() {
         return None;
     }
     // Same UA + unique ZIP-321 memo (Pedersen C) is the stable checkout dest.
-    let mut addr_cmd = std::process::Command::new(&bin);
-    addr_cmd.arg("addresses");
-    if let Ok(dir) = std::env::var("SVG_MINT_ZRT_DIR") {
-        if !dir.is_empty() {
-            addr_cmd.env("SVG_MINT_ZRT_DIR", dir);
-        }
-    }
-    let out = addr_cmd.output().ok()?;
+    let out = std::process::Command::new(&bin)
+        .args(["addresses", &index.to_string()])
+        .output()
+        .ok()?;
     let s = String::from_utf8_lossy(&out.stdout);
     for line in s.lines() {
         let t = line.trim();
@@ -909,21 +922,17 @@ fn ztreamer_require_vendor() -> Result<(), String> {
 }
 
 fn watch_zec_zrt(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
-    let bin = zrt_bin();
+    let bin = match std::env::var("SVG_MINT_ZRT_BIN") {
+        Ok(b) if !b.is_empty() => b,
+        _ => "/home/returniflost/abstract/svg-mint/target/release/svg-mint-zrt".into(),
+    };
     if !std::path::Path::new(&bin).is_file() {
         return Ok(());
     }
-    if std::env::var("SVG_MINT_SKIP_ZRT_WATCH").ok().as_deref() == Some("1") {
-        return Ok(());
-    }
-    let mut notes_cmd = std::process::Command::new(&bin);
-    notes_cmd.arg("notes");
-    if let Ok(dir) = std::env::var("SVG_MINT_ZRT_DIR") {
-        if !dir.is_empty() {
-            notes_cmd.env("SVG_MINT_ZRT_DIR", dir);
-        }
-    }
-    let out = notes_cmd.output().map_err(|e| e.to_string())?;
+    let out = std::process::Command::new(&bin)
+        .arg("notes")
+        .output()
+        .map_err(|e| e.to_string())?;
     if !out.status.success() {
         return Err(format!(
             "svg-mint-zrt notes: {}",
@@ -1631,35 +1640,17 @@ fn admin_adr36_session(fed: &Arc<Mutex<Fed>>, body: &str) -> Result<serde_json::
     // Sign-in plane: Keplr signs the raw challenge bytes (hex-decoded), not the withdraw sentence.
     let data = hex::decode(challenge).map_err(|_| "challenge hex".to_string())?;
     let terp = dregg::adr36::verify_keplr_arbitrary(chain_id, signer, &data, pk, sig)?;
-    let path = std::env::var("DREGG_ADMIN_TERP1_PATH").unwrap_or_else(|_| {
-        format!(
-            "{}/.terp/dregg-admin-terp1",
-            std::env::var("HOME").unwrap_or_else(|_| ".".into())
-        )
-    });
-    let designated = std::fs::read_to_string(&path)
-        .ok()
-        .map(|s| s.trim().to_string())
-        .filter(|s| s.starts_with("terp1"));
-    match designated {
-        None => {
-            if let Some(parent) = std::path::Path::new(&path).parent() {
-                let _ = std::fs::create_dir_all(parent);
-            }
-            std::fs::write(&path, terp.as_bytes()).map_err(|e| e.to_string())?;
-            let _ = std::fs::set_permissions(
-                &path,
-                std::os::unix::fs::PermissionsExt::from_mode(0o600),
-            );
-        }
-        Some(want) if want != terp => {
-            return Err("Keplr address is not the designated admin".into());
-        }
-        Some(_) => {}
+    let admins = designated_admins();
+    if admins.is_empty() {
+        // Fail closed: no file, no admin. Never adopt the first signer.
+        return Err("no designated admin configured on this desk".into());
+    }
+    if !admins.iter().any(|a| *a == terp.to_lowercase()) {
+        return Err(format!("{} is not a designated admin", terp));
     }
     let token = match std::env::var("DREGG_ADMIN_TOKEN") {
         Ok(s) if !s.is_empty() => s,
-        _ => terp.clone(),
+        _ => issue_admin_session(&terp.to_lowercase()),
     };
     Ok(json!({"ok": true, "token": token, "signer": terp, "mode": "adr36"}))
 }
@@ -1680,37 +1671,27 @@ fn withdraw_history(limit: usize, before: Option<u64>) -> Result<serde_json::Val
     serde_json::from_slice(&out.stdout).map_err(|e| e.to_string())
 }
 
-fn zcli_withdraw_zec(to: &str, zat: u64, lab_txid: Option<&str>) -> Result<String, String> {
+fn zcli_withdraw_zec(to: &str, zat: u64) -> Result<String, String> {
     if !withdraw_allowlist().iter().any(|u| u == to) {
         return Err("withdraw dest is not the donation / allowlisted UA".into());
     }
     if zat == 0 {
         return Err("zat required".into());
     }
-    let bin = zrt_bin();
+    let bin = std::env::var("SVG_MINT_ZRT_BIN")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| {
+            "/home/returniflost/abstract/svg-mint/target/release/svg-mint-zrt".into()
+        });
     if !std::path::Path::new(&bin).is_file() {
         return Err("svg-mint-zrt missing".into());
     }
     let zat_s = zat.to_string();
-    let lab = std::env::var("SVG_MINT_ZRT_LAB").ok().as_deref() == Some("1");
-    let mut cmd = std::process::Command::new(&bin);
-    if let Ok(dir) = std::env::var("SVG_MINT_ZRT_DIR") {
-        if !dir.is_empty() {
-            cmd.env("SVG_MINT_ZRT_DIR", dir);
-        }
-    }
-    // Lab commit is not a broadcast. Production leaves this unset and uses `send`,
-    // which refuses to mark notes spent while the prover is unlinked.
-    if lab {
-        let txid = lab_txid.unwrap_or("");
-        if txid.len() != 64 || !txid.chars().all(|c| c.is_ascii_hexdigit()) {
-            return Err("lab withdraw needs a 64-hex txid; notes were not marked spent".into());
-        }
-        cmd.args(["lab-send", "--zat", &zat_s, "--address", to, "--txid", txid]);
-    } else {
-        cmd.args(["send", "--zat", &zat_s, "--address", to]);
-    }
-    let out = cmd.output().map_err(|e| e.to_string())?;
+    let out = std::process::Command::new(&bin)
+        .args(["send", "--zat", &zat_s, "--address", to])
+        .output()
+        .map_err(|e| e.to_string())?;
     let stdout = String::from_utf8_lossy(&out.stdout);
     let stderr = String::from_utf8_lossy(&out.stderr);
     if !out.status.success() {
@@ -1775,16 +1756,7 @@ fn admin_zid_session(fed: &Arc<Mutex<Fed>>, body: &str) -> Result<serde_json::Va
         .filter(|s| !s.is_empty());
     let pk_norm = hex::encode(pk32);
     match designated {
-        None => {
-            if let Some(parent) = std::path::Path::new(&path).parent() {
-                let _ = std::fs::create_dir_all(parent);
-            }
-            std::fs::write(&path, pk_norm.as_bytes()).map_err(|e| e.to_string())?;
-            let _ = std::fs::set_permissions(
-                &path,
-                std::os::unix::fs::PermissionsExt::from_mode(0o600),
-            );
-        }
+        None => return Err("no designated zid admin configured on this desk".into()),
         Some(want) if want.trim_start_matches("0x") != pk_norm => {
             return Err("zid public key is not the designated admin".into());
         }
@@ -1792,12 +1764,13 @@ fn admin_zid_session(fed: &Arc<Mutex<Fed>>, body: &str) -> Result<serde_json::Va
     }
     let token = match std::env::var("DREGG_ADMIN_TOKEN") {
         Ok(s) if !s.is_empty() => s,
-        _ => pk_norm.clone(),
+        _ => issue_admin_session(&format!("zid:{pk_norm}")),
     };
     Ok(json!({"ok": true, "token": token, "pubkey": pk_norm}))
 }
 
-fn designated_admin_terp1() -> Option<String> {
+/// Admin list file: terp1 addresses separated by newlines, spaces or commas.
+fn designated_admins() -> Vec<String> {
     let path = std::env::var("DREGG_ADMIN_TERP1_PATH").unwrap_or_else(|_| {
         format!(
             "{}/.terp/dregg-admin-terp1",
@@ -1805,9 +1778,155 @@ fn designated_admin_terp1() -> Option<String> {
         )
     });
     std::fs::read_to_string(&path)
-        .ok()
-        .map(|s| s.trim().to_string())
+        .unwrap_or_default()
+        .split(|c: char| c.is_whitespace() || c == ',')
+        .map(|s| s.trim().to_lowercase())
         .filter(|s| s.starts_with("terp1"))
+        .collect()
+}
+
+static ADMIN_SESSIONS: std::sync::OnceLock<Mutex<HashMap<String, (String, u64)>>> =
+    std::sync::OnceLock::new();
+const ADMIN_SESSION_SECS: u64 = 12 * 3600;
+
+fn now_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+/// Random bearer for a verified admin. Never the (public) address itself.
+fn issue_admin_session(who: &str) -> String {
+    let mut raw = [0u8; 32];
+    use rand::RngCore;
+    rand::rng().fill_bytes(&mut raw);
+    let tok = hex::encode(raw);
+    let mut m = ADMIN_SESSIONS
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .unwrap();
+    let now = now_secs();
+    m.retain(|_, (_, exp)| *exp > now);
+    m.insert(tok.clone(), (who.to_string(), now + ADMIN_SESSION_SECS));
+    tok
+}
+
+fn admin_who(got: Option<&str>) -> String {
+    let g = got
+        .map(|g| g.strip_prefix("Bearer ").unwrap_or(g).trim().to_string())
+        .unwrap_or_default();
+    let m = ADMIN_SESSIONS
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .unwrap();
+    m.get(&g)
+        .map(|(w, _)| w.clone())
+        .unwrap_or_else(|| "admin-token".into())
+}
+
+fn admin_actions_path() -> String {
+    let store = std::env::var("SVG_MINT_FED_STORE").unwrap_or_else(|_| "svg-mint-fed".into());
+    format!("{store}.admin-actions.jsonl")
+}
+
+/// Append-only admin action log (one JSON object per line, never rewritten).
+fn admin_log(entry: serde_json::Value) {
+    use std::io::Write;
+    let mut o = std::fs::OpenOptions::new();
+    o.create(true).append(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        o.mode(0o600);
+    }
+    match o.open(admin_actions_path()) {
+        Ok(mut f) => {
+            let _ = writeln!(f, "{}", entry);
+            let _ = f.sync_data();
+        }
+        Err(e) => eprintln!("svg-mint-fed admin log: {e}"),
+    }
+}
+
+fn admin_actions(limit: usize) -> Vec<serde_json::Value> {
+    let raw = std::fs::read_to_string(admin_actions_path()).unwrap_or_default();
+    raw.lines()
+        .rev()
+        .filter_map(|l| serde_json::from_str(l).ok())
+        .take(limit)
+        .collect()
+}
+
+/// Admin mint-to: entitled rows run the paid-mint path now; unpaid rows mint as a comp
+/// only when the admin confirmed `comp: true`. Returns (phase, mint_tx, token_id).
+fn admin_mint_to(
+    fed: &Arc<Mutex<Fed>>,
+    terp: &str,
+    id: Option<u64>,
+    comp: bool,
+) -> Result<(String, String, String), String> {
+    let (row, pend) = {
+        let f = fed.lock().unwrap();
+        let row = f
+            .sessions
+            .find(terp, id)
+            .ok_or("no checkout row for this address")?;
+        let n = f.by_recipient.get(terp).copied();
+        let pend = n.and_then(|n| f.cell.pending_mints().into_iter().find(|p| p.n == n));
+        (row, pend)
+    };
+    match row.phase.as_str() {
+        "minted" | "settled" => return Err(format!("already minted (tx {})", row.txid)),
+        "refunded" | "resolved" => return Err(format!("row is {}", row.phase)),
+        _ => {}
+    }
+    if let Some(p) = pend {
+        let paid = if let Some(hash) = p.mint_tx.clone() {
+            dregg::mint_tx::finish_transfer(&p.collection, terp, &hash, &p.token_ids).map(
+                |(ids, xfer)| dregg::mint_tx::PaidMint {
+                    mint_tx: hash,
+                    token_ids: ids,
+                    transfer_tx: xfer,
+                },
+            )?
+        } else {
+            dregg::mint_tx::broadcast_paid_mint(&p.collection, terp, p.qty)?
+        };
+        settle_paid_mint(fed, &p.n, terp, &paid);
+        let tok = paid.token_ids.first().cloned().unwrap_or_default();
+        let mut f = fed.lock().unwrap();
+        f.sessions.set_row(row.id, "minted", &paid.mint_tx, &tok);
+        return Ok(("minted".into(), paid.mint_tx, tok));
+    }
+    if !comp {
+        return Err(
+            "no payment recorded for this checkout; confirm a comp mint to send it anyway".into(),
+        );
+    }
+    let coll = dregg::collections::resolve(None)?;
+    let paid = dregg::mint_tx::broadcast_paid_mint(&coll, terp, row.qty.max(1))?;
+    let tok = paid.token_ids.first().cloned().unwrap_or_default();
+    let mut f = fed.lock().unwrap();
+    f.sessions.set_row(row.id, "minted", &paid.mint_tx, &tok);
+    Ok(("minted".into(), paid.mint_tx, tok))
+}
+
+fn admin_session_ok(tok: &str) -> bool {
+    let m = ADMIN_SESSIONS
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .unwrap();
+    match m.get(tok) {
+        Some((who, exp)) if *exp > now_secs() => {
+            who.starts_with("zid:") || designated_admins().iter().any(|a| a == who)
+        }
+        _ => false,
+    }
+}
+
+fn designated_admin_terp1() -> Option<String> {
+    designated_admins().into_iter().next()
 }
 
 fn admin_token_ok(got: Option<&str>) -> bool {
@@ -1823,14 +1942,15 @@ fn admin_token_ok(got: Option<&str>) -> bool {
             return true;
         }
     }
-    // ADR-036 session returns the designated terp1 when no env token is set.
-    if designated_admin_terp1().as_deref() == Some(g) {
+    // ADR-036 / zid sessions are random bearers bound to a still-listed admin.
+    if admin_session_ok(g) {
         return true;
     }
     false
 }
 
-fn adr36_fields(v: &serde_json::Value) -> Result<(&str, &str, &str, &str, &str), String> {
+/// Fresh ADR-036 over a live challenge. Consumes the nonce (no replay).
+fn admin_adr36_authorize(fed: &Arc<Mutex<Fed>>, v: &serde_json::Value) -> Result<String, String> {
     let challenge = v.get("challenge").and_then(|x| x.as_str()).unwrap_or("");
     let signer = v.get("signer").and_then(|x| x.as_str()).unwrap_or("");
     let chain_id = v
@@ -1846,139 +1966,30 @@ fn adr36_fields(v: &serde_json::Value) -> Result<(&str, &str, &str, &str, &str),
     if challenge.is_empty() || signer.is_empty() || pk.is_empty() || sig.is_empty() {
         return Err("ADR-036 required: challenge, signer, pub_key, signature".into());
     }
-    Ok((challenge, signer, chain_id, pk, sig))
-}
-
-fn consume_challenge(fed: &Arc<Mutex<Fed>>, challenge: &str) -> Result<(), String> {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
-    let mut f = fed.lock().unwrap();
-    match f.admin_challenges.remove(challenge) {
-        Some(exp) if exp >= now => Ok(()),
-        _ => Err("challenge expired or unknown".into()),
+    {
+        let mut f = fed.lock().unwrap();
+        match f.admin_challenges.remove(challenge) {
+            Some(exp) if exp >= now => {}
+            _ => return Err("challenge expired or unknown".into()),
+        }
     }
-}
-
-fn require_designated(terp: &str) -> Result<String, String> {
-    match designated_admin_terp1() {
-        None => Err("no designated admin; ADR-036 session first".into()),
-        Some(want) if want != terp => Err("Keplr address is not the designated admin".into()),
-        Some(_) => Ok(terp.to_string()),
-    }
-}
-
-/// Fresh ADR-036 over `statement`. Consumes the nonce (no replay).
-fn admin_adr36_over(
-    fed: &Arc<Mutex<Fed>>,
-    v: &serde_json::Value,
-    statement: &[u8],
-) -> Result<String, String> {
-    let (challenge, signer, chain_id, pk, sig) = adr36_fields(v)?;
-    consume_challenge(fed, challenge)?;
-    let terp = dregg::adr36::verify_keplr_arbitrary(chain_id, signer, statement, pk, sig)?;
-    require_designated(&terp)
-}
-
-/// Fresh ADR-036 over a live challenge. Consumes the nonce (no replay).
-fn admin_adr36_authorize(fed: &Arc<Mutex<Fed>>, v: &serde_json::Value) -> Result<String, String> {
-    let challenge = v.get("challenge").and_then(|x| x.as_str()).unwrap_or("");
+    // Withdraw plane: Keplr signs the UTF-8 sentence, not the raw challenge bytes.
     let zat = v.get("zat").and_then(|x| x.as_u64()).unwrap_or(0);
     let statement = dregg::adr36::withdraw_statement(zat, dregg::adr36::DONATE_ZEC_UA, challenge);
-    admin_adr36_over(fed, v, statement.as_bytes())
-}
-
-fn checkout_action(
-    fed: &Arc<Mutex<Fed>>,
-    v: &serde_json::Value,
-    terp: &str,
-    action: &str,
-    signer: String,
-) -> (u16, serde_json::Value) {
-    if action == "refund" {
-        let mut g = fed.lock().unwrap();
-        if g.sessions.refund(terp) {
-            (
-                200,
-                json!({
-                    "ok": true,
-                    "authorized": true,
-                    "minted": false,
-                    "phase": "refunded",
-                    "signer": signer,
-                }),
-            )
-        } else {
-            (
-                404,
-                json!({
-                    "ok": false,
-                    "authorized": true,
-                    "minted": false,
-                    "error": "no open unminted checkout for this address",
-                    "signer": signer,
-                }),
-            )
-        }
+    let terp =
+        dregg::adr36::verify_keplr_arbitrary(chain_id, signer, statement.as_bytes(), pk, sig)?;
+    let admins = designated_admins();
+    if admins.is_empty() {
+        return Err("no designated admin configured on this desk".into());
+    }
+    if admins.iter().any(|a| *a == terp.to_lowercase()) {
+        Ok(terp)
     } else {
-        let tx = v
-            .get("terp_tx")
-            .and_then(|x| x.as_str())
-            .unwrap_or("")
-            .trim()
-            .to_string();
-        let mut g = fed.lock().unwrap();
-        let phase = g.sessions.open_row(terp).map(|r| r.phase.clone());
-        if phase.as_deref() != Some("entitled") {
-            (
-                409,
-                json!({
-                    "ok": false,
-                    "authorized": true,
-                    "minted": false,
-                    "phase": phase,
-                    "error": "mint-to requires an entitled checkout that has not minted",
-                    "signer": signer,
-                }),
-            )
-        } else if tx.is_empty() {
-            (
-                200,
-                json!({
-                    "ok": true,
-                    "authorized": true,
-                    "minted": false,
-                    "phase": "entitled",
-                    "signer": signer,
-                    "error": "The mint transaction has not been sent",
-                }),
-            )
-        } else if g.sessions.record_chain_mint(terp, &tx) {
-            (
-                200,
-                json!({
-                    "ok": true,
-                    "authorized": true,
-                    "minted": true,
-                    "phase": "settled",
-                    "terp_tx": tx,
-                    "signer": signer,
-                }),
-            )
-        } else {
-            (
-                400,
-                json!({
-                    "ok": false,
-                    "authorized": true,
-                    "minted": false,
-                    "phase": "entitled",
-                    "error": "terp_tx must be the 64-hex mint hash. Status stays entitled.",
-                    "signer": signer,
-                }),
-            )
-        }
+        Err(format!("{} is not a designated admin", terp))
     }
 }
 
@@ -2184,6 +2195,9 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                     "challenge": challenge,
                     "statement": "Sign in to permissionless.money desk",
                     "exp": now + 120,
+                    // Public terp1 the sign-in must come from (read-only display on /ops).
+                    "designated_admin": designated_admin_terp1(),
+                    "designated_admins": designated_admins(),
                 }),
             )
         }
@@ -2210,35 +2224,105 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
             }
         }
         ("POST", "/v1/admin/checkout") => {
-            let v = serde_json::from_str::<serde_json::Value>(body).unwrap_or(json!({}));
-            let terp = v
-                .get("terp")
-                .and_then(|x| x.as_str())
-                .unwrap_or("")
-                .trim()
-                .to_string();
-            let action = v.get("action").and_then(|x| x.as_str()).unwrap_or("");
-            if terp.is_empty() {
-                (400, json!({"ok": false, "error": "terp required"}))
-            } else if action != "refund" && action != "mint-to" {
-                (
-                    400,
-                    json!({"ok": false, "error": "action is refund or mint-to"}),
-                )
-            } else if adr36_fields(&v).is_err() {
-                (
-                    401,
-                    json!({"ok": false, "authorized": false, "error": "ADR-036 required"}),
-                )
+            if !admin_token_ok(admin_got.as_deref()) {
+                (401, json!({"ok": false, "error": "admin"}))
             } else {
-                let challenge = v.get("challenge").and_then(|x| x.as_str()).unwrap_or("");
-                match dregg::adr36::checkout_statement(action, &terp, challenge) {
-                    Err(e) => (400, json!({"ok": false, "error": e})),
-                    Ok(statement) => match admin_adr36_over(&fed, &v, statement.as_bytes()) {
-                        Err(e) => (401, json!({"ok": false, "authorized": false, "error": e})),
-                        Ok(signer) => checkout_action(&fed, &v, &terp, action, signer),
-                    },
+                let v = serde_json::from_str::<serde_json::Value>(body).unwrap_or(json!({}));
+                let terp = v
+                    .get("terp")
+                    .and_then(|x| x.as_str())
+                    .unwrap_or("")
+                    .trim()
+                    .to_string();
+                let action = v
+                    .get("action")
+                    .and_then(|x| x.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let id = v.get("id").and_then(|x| x.as_u64());
+                let comp = v.get("comp").and_then(|x| x.as_bool()).unwrap_or(false);
+                let note = v
+                    .get("note")
+                    .and_then(|x| x.as_str())
+                    .unwrap_or("")
+                    .chars()
+                    .take(200)
+                    .collect::<String>();
+                let who = admin_who(admin_got.as_deref());
+                let (code, out) = if terp.is_empty() {
+                    (400, json!({"ok": false, "error": "terp required"}))
+                } else if action == "refund" {
+                    let mut g = fed.lock().unwrap();
+                    if g.sessions.refund(&terp) {
+                        (200, json!({"ok": true, "phase": "refunded"}))
+                    } else {
+                        (
+                            404,
+                            json!({"ok": false, "error": "no open checkout for this address"}),
+                        )
+                    }
+                } else if action == "resolve" {
+                    let mut g = fed.lock().unwrap();
+                    match g.sessions.find(&terp, id) {
+                        Some(r) => {
+                            g.sessions.set_row(r.id, "resolved", &r.txid, &r.token_id);
+                            (
+                                200,
+                                json!({"ok": true, "phase": "resolved", "prior_phase": r.phase}),
+                            )
+                        }
+                        None => (
+                            404,
+                            json!({"ok": false, "error": "no checkout row for this address"}),
+                        ),
+                    }
+                } else if action == "mint-to" {
+                    match admin_mint_to(&fed, &terp, id, comp) {
+                        Ok((phase, tx, tok)) => (
+                            200,
+                            json!({"ok": true, "phase": phase, "tx": tx, "token_id": tok, "comp": comp}),
+                        ),
+                        Err(e) => (409, json!({"ok": false, "error": e})),
+                    }
+                } else {
+                    (
+                        400,
+                        json!({"ok": false, "error": "action is mint-to, refund or resolve"}),
+                    )
+                };
+                if !terp.is_empty() && matches!(action.as_str(), "refund" | "resolve" | "mint-to") {
+                    admin_log(json!({
+                        "at": now_secs(), "admin": who, "action": action, "terp": terp, "id": id,
+                        "comp": comp, "note": note, "ok": out.get("ok").cloned().unwrap_or(json!(false)),
+                        "phase": out.get("phase").cloned(), "tx": out.get("tx").cloned(),
+                        "error": out.get("error").cloned(),
+                    }));
                 }
+                (code, out)
+            }
+        }
+        (m, p) if m == "GET" && p.starts_with("/v1/admin/actions") => {
+            if !admin_token_ok(admin_got.as_deref()) {
+                (401, json!({"ok": false, "error": "admin"}))
+            } else {
+                let limit = p
+                    .split("limit=")
+                    .nth(1)
+                    .and_then(|s| s.split('&').next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(200usize)
+                    .min(2000);
+                (200, json!({"ok": true, "actions": admin_actions(limit)}))
+            }
+        }
+        (m, p) if m == "GET" && p.starts_with("/v1/admin/sponsor") => {
+            if !admin_token_ok(admin_got.as_deref()) {
+                (401, json!({"ok": false, "error": "admin"}))
+            } else {
+                let mut v = dregg::mint_tx::sponsor_status();
+                v["ok"] = json!(true);
+                v["authz_granter"] = json!(std::env::var("ONBOARD_RUNTIME").ok());
+                (200, v)
             }
         }
         ("POST", "/v1/admin/mints/flush") => {
@@ -2282,8 +2366,12 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                             json!({"ok": false, "error": "zat required", "withdraw_to": dest}),
                         )
                     } else {
-                        let lab_txid = v.get("lab_txid").and_then(|x| x.as_str());
-                        match zcli_withdraw_zec(&dest, zat, lab_txid) {
+                        let wr = zcli_withdraw_zec(&dest, zat);
+                        admin_log(
+                            json!({"at": now_secs(), "admin": signer, "action": "withdraw-zec", "zat": zat,
+                                "ok": wr.is_ok(), "error": wr.as_ref().err()}),
+                        );
+                        match wr {
                             Ok(out) => (
                                 200,
                                 json!({
@@ -2966,9 +3054,8 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                                     action,
                                 }) {
                                     Ok(_) => {
-                                        f.by_recipient.insert(recipient.clone(), n_ent);
+                                        f.by_recipient.insert(recipient, n_ent);
                                         save_recipients(&f.recipients_path, &f.by_recipient);
-                                        f.sessions.advance(&recipient, "entitled", "", 0, "");
                                         let qty = f.cell.qty(&n_ent).unwrap_or(1);
                                         let batches = checkout::mint_batches(
                                             qty as u64,

@@ -266,6 +266,11 @@ impl CheckoutStatus {
             "unit_native": NATIVE_AMOUNT.to_string(),
             "reasons": self.reasons,
             "zec_tip": self.zec_tip.to_json(),
+            // Drift closes only the shielded ZEC rails (QR, Zafu). THIOL follows checkout_ready.
+            "pay_rails": {
+                "thiol_ready": self.checkout_ready,
+                "zec_ready": self.checkout_ready && (!self.zec_tip.configured || self.zec_tip.ok),
+            },
             "minter_cover": "gas",
             "collections": screen.admitted,
             "collections_configured": crate::collections::watched(),

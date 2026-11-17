@@ -1,0 +1,27 @@
+[package]
+name = "terp-onboard-authz"
+version = "0.1.0"
+edition = "2021"
+description = "DAO authz + scoped feegrant library and runtime for ephemeral wallet onboarding"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "terp_onboard_authz"
+path = "src/lib.rs"
+
+[[bin]]
+name = "onboard-runtime"
+path = "src/bin/onboard-runtime.rs"
+
+[[bin]]
+name = "prepare-authz"
+path = "src/bin/prepare-authz.rs"
+
+[[bin]]
+name = "local-workflow"
+path = "src/bin/local-workflow.rs"
+
+[dependencies]
+serde = { workspace = true, features = ["derive", "std"] }
+serde_json = { workspace = true, features = ["std"] }

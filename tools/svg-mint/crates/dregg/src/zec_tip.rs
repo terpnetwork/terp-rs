@@ -27,54 +27,68 @@ pub struct ZecTip {
     pub public_height: Option<u64>,
     pub drift: Option<u64>,
     pub max_drift: u64,
-    /// `drift` | `private_unreachable` | `public_unreachable` | `private_unconfigured`
+    /// `drift` | `private_unreachable` | `stale_private` | `private_unconfigured`
     pub reason: Option<String>,
+    /// `ok` | `degraded_public_unavailable` | `stale_private` | `drift` | `private_unreachable`
+    pub status: String,
+    pub public_source: Option<String>,
+    pub last_public_height: Option<u64>,
+    pub last_public_age_secs: Option<u64>,
+    pub private_advanced_secs_ago: Option<u64>,
 }
 
 impl ZecTip {
-    pub fn skipped(max_drift: u64) -> Self {
+    fn base(max_drift: u64) -> Self {
         Self {
-            configured: false,
-            ok: true,
+            configured: true,
+            ok: false,
             private_height: None,
             public_height: None,
             drift: None,
             max_drift,
             reason: None,
+            status: "ok".into(),
+            public_source: None,
+            last_public_height: None,
+            last_public_age_secs: None,
+            private_advanced_secs_ago: None,
         }
     }
 
+    pub fn skipped(max_drift: u64) -> Self {
+        let mut t = Self::base(max_drift);
+        t.configured = false;
+        t.ok = true;
+        t
+    }
+
+    /// Drift only fails when the house node is BEHIND the public tip by more than
+    /// `max_drift`; a public source that lags the house is not a house fault.
     pub fn from_heights(private: u64, public: u64, max_drift: u64) -> Self {
-        let drift = private.abs_diff(public);
-        if drift > max_drift {
-            Self {
-                configured: true,
-                ok: false,
-                private_height: Some(private),
-                public_height: Some(public),
-                drift: Some(drift),
-                max_drift,
-                reason: Some("drift".into()),
-            }
+        let mut t = Self::base(max_drift);
+        t.private_height = Some(private);
+        t.public_height = Some(public);
+        t.drift = Some(private.abs_diff(public));
+        if public > private && public - private > max_drift {
+            t.reason = Some("drift".into());
+            t.status = "drift".into();
         } else {
-            Self {
-                configured: true,
-                ok: true,
-                private_height: Some(private),
-                public_height: Some(public),
-                drift: Some(drift),
-                max_drift,
-                reason: None,
-            }
+            t.ok = true;
         }
+        t
     }
 
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "ok": self.ok,
+            "status": self.status,
             "configured": self.configured,
             "private_height": self.private_height,
             "public_height": self.public_height,
+            "public_source": self.public_source,
+            "last_public_height": self.last_public_height,
+            "last_public_age_secs": self.last_public_age_secs,
+            "private_advanced_secs_ago": self.private_advanced_secs_ago,
             "drift": self.drift,
             "max_drift": self.max_drift,
             "reason": self.reason,
@@ -94,6 +108,47 @@ pub fn public_rpc() -> Option<String> {
         .ok()
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
+}
+
+/// Keyless secondary public height (JSON GET). Default Blockchair stats.
+/// `ZCASH_PUBLIC_HEIGHT_URL=off` disables it.
+fn public_height_url() -> Option<String> {
+    let v = std::env::var("ZCASH_PUBLIC_HEIGHT_URL")
+        .unwrap_or_else(|_| "https://api.blockchair.com/zcash/stats".into());
+    let v = v.trim().to_string();
+    if v.is_empty() || v == "off" {
+        None
+    } else {
+        Some(v)
+    }
+}
+
+fn secondary_height(url: &str) -> Result<u64, String> {
+    let v = httpx::get_json(url)?;
+    for p in ["/data/best_block_height", "/result", "/height", "/blocks"] {
+        if let Some(h) = v.pointer(p).and_then(|x| x.as_u64()) {
+            return Ok(h);
+        }
+    }
+    Err("no height in response".into())
+}
+
+static SEC_CACHE: Mutex<Option<(u64, Instant)>> = Mutex::new(None);
+
+/// Secondary source is rate limited: read at most once a minute.
+fn secondary_cached(url: &str) -> Result<u64, String> {
+    if let Ok(g) = SEC_CACHE.lock() {
+        if let Some((h, at)) = g.as_ref() {
+            if at.elapsed() < Duration::from_secs(60) {
+                return Ok(*h);
+            }
+        }
+    }
+    let h = secondary_height(url)?;
+    if let Ok(mut g) = SEC_CACHE.lock() {
+        *g = Some((h, Instant::now()));
+    }
+    Ok(h)
 }
 
 pub fn private_rpc() -> Option<String> {
@@ -117,12 +172,23 @@ fn cache_ttl() -> Duration {
     Duration::from_secs(secs)
 }
 
+fn private_stale_secs() -> u64 {
+    std::env::var("ZCASH_PRIVATE_STALE_SECS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(900)
+}
+
 struct Cache {
     at: Instant,
     tip: ZecTip,
 }
 
 static CACHE: Mutex<Option<Cache>> = Mutex::new(None);
+/// (height, when it last increased)
+static PRIV_SEEN: Mutex<Option<(u64, Instant)>> = Mutex::new(None);
+/// (height, when read, source)
+static PUB_LAST: Mutex<Option<(u64, Instant, String)>> = Mutex::new(None);
 
 /// Serializes env mutations in unit tests (same idea as `minter_env_lock`).
 pub fn env_lock() -> std::sync::MutexGuard<'static, ()> {
@@ -158,54 +224,98 @@ pub fn probe() -> ZecTip {
     tip
 }
 
+/// ZEC rail health. The private (house) node is the authority: the rail is OK when
+/// its height is known and advanced within `ZCASH_PRIVATE_STALE_SECS`, and — only if a
+/// public height is available — the house is not behind it by more than `max_drift`.
+/// No public height (all sources failed) is a warning, `degraded_public_unavailable`.
 pub fn probe_uncached() -> ZecTip {
     let max = max_drift();
-    let Some(public) = public_rpc() else {
+    let public = public_rpc();
+    let secondary = public_height_url();
+    if public.is_none() && secondary.is_none() {
         return ZecTip::skipped(max);
-    };
-    let Some(private) = private_rpc() else {
-        return ZecTip {
-            configured: true,
-            ok: false,
-            private_height: None,
-            public_height: None,
-            drift: None,
-            max_drift: max,
-            reason: Some("private_unconfigured".into()),
-        };
-    };
-    let pub_h = getblockcount(&public, "ZCASH_PUBLIC_RPC_COOKIE");
-    let priv_h = getblockcount(&private, "ZCASH_PRIVATE_RPC_COOKIE");
-    match (priv_h, pub_h) {
-        (Ok(p), Ok(u)) => ZecTip::from_heights(p, u, max),
-        (Err(_), Ok(u)) => ZecTip {
-            configured: true,
-            ok: false,
-            private_height: None,
-            public_height: Some(u),
-            drift: None,
-            max_drift: max,
-            reason: Some("private_unreachable".into()),
-        },
-        (Ok(p), Err(_)) => ZecTip {
-            configured: true,
-            ok: false,
-            private_height: Some(p),
-            public_height: None,
-            drift: None,
-            max_drift: max,
-            reason: Some("public_unreachable".into()),
-        },
-        (Err(_), Err(_)) => ZecTip {
-            configured: true,
-            ok: false,
-            private_height: None,
-            public_height: None,
-            drift: None,
-            max_drift: max,
-            reason: Some("private_unreachable".into()),
-        },
     }
+    let Some(private) = private_rpc() else {
+        let mut t = ZecTip::base(max);
+        t.reason = Some("private_unconfigured".into());
+        t.status = "private_unreachable".into();
+        return t;
+    };
+    let priv_h = getblockcount(&private, "ZCASH_PRIVATE_RPC_COOKIE");
+    let mut pub_h: Option<(u64, String)> = None;
+    if let Some(p) = public.as_deref() {
+        if let Ok(h) = getblockcount(p, "ZCASH_PUBLIC_RPC_COOKIE") {
+            pub_h = Some((h, "public_rpc".into()));
+        }
+    }
+    if let Some(u) = secondary.as_deref() {
+        if let Ok(h) = secondary_cached(u) {
+            if pub_h.as_ref().map_or(true, |(x, _)| h > *x) {
+                pub_h = Some((h, "public_height_url".into()));
+            }
+        }
+    }
+    let now = Instant::now();
+    if let Some((h, src)) = pub_h.as_ref() {
+        if let Ok(mut g) = PUB_LAST.lock() {
+            *g = Some((*h, now, src.clone()));
+        }
+    }
+    let last_pub = PUB_LAST.lock().ok().and_then(|g| g.clone());
+    let Ok(p) = priv_h else {
+        let mut t = ZecTip::base(max);
+        t.public_height = pub_h.as_ref().map(|x| x.0);
+        t.reason = Some("private_unreachable".into());
+        t.status = "private_unreachable".into();
+        return t;
+    };
+    let advanced_ago = {
+        let mut g = PRIV_SEEN.lock().unwrap_or_else(|e| e.into_inner());
+        match g.as_ref() {
+            Some((h, _)) if p > *h => *g = Some((p, now)),
+            None => *g = Some((p, now)),
+            _ => {}
+        }
+        g.as_ref()
+            .map(|(_, at)| now.duration_since(*at).as_secs())
+            .unwrap_or(0)
+    };
+    let mut t = match pub_h.as_ref() {
+        Some((u, src)) => {
+            let mut t = ZecTip::from_heights(p, *u, max);
+            t.public_source = Some(src.clone());
+            t
+        }
+        None => {
+            let mut t = ZecTip::base(max);
+            t.private_height = Some(p);
+            t.ok = true;
+            t.status = "degraded_public_unavailable".into();
+            // Last-good public height still catches a house node that fell far behind.
+            if let Some((lh, at, _)) = last_pub.as_ref() {
+                let age = now.duration_since(*at).as_secs();
+                let expected = lh + age / 75;
+                if expected > p + max + 2 {
+                    t.ok = false;
+                    t.status = "drift".into();
+                    t.reason = Some("drift".into());
+                    t.drift = Some(expected - p);
+                }
+            }
+            t
+        }
+    };
+    if let Some((lh, at, _)) = last_pub.as_ref() {
+        t.last_public_height = Some(*lh);
+        t.last_public_age_secs = Some(now.duration_since(*at).as_secs());
+    }
+    t.private_advanced_secs_ago = Some(advanced_ago);
+    if advanced_ago > private_stale_secs() {
+        t.ok = false;
+        t.status = "stale_private".into();
+        t.reason = Some("stale_private".into());
+    }
+    t
 }
 
 fn getblockcount(url: &str, cookie_env: &str) -> Result<u64, String> {
@@ -382,6 +492,8 @@ mod tests {
         let _g = env_lock();
         clear_cache();
         unsafe { std::env::remove_var("ZCASH_PUBLIC_RPC") };
+        // The secondary public height source defaults to Blockchair; turn it off here.
+        unsafe { std::env::set_var("ZCASH_PUBLIC_HEIGHT_URL", "off") };
         unsafe { std::env::remove_var("ZCASH_PRIVATE_RPC") };
         unsafe { std::env::remove_var("ZAKURA_RPC") };
         let t = probe_uncached();

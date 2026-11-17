@@ -15030,26 +15030,11 @@ dependencies = [
  "blake3",
  "dregg",
  "ed25519-dalek",
- "hash-market",
  "hex",
  "rand 0.9.5",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "svg-mint-zrt"
-version = "0.1.0"
-dependencies = [
- "blake3",
- "getrandom 0.2.17",
- "hex",
- "orchard 0.16.0",
- "rusqlite",
- "serde_json",
- "zcash_address 0.13.0",
- "zcash_protocol 0.10.6",
- "zip32 0.3.0",
+ "terp-onboard-authz",
 ]
 
 [[package]]
@@ -15797,6 +15782,14 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "zakura-halo2-proofs",
+]
+
+[[package]]
+name = "terp-onboard-authz"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

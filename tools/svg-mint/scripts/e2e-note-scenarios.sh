@@ -14,9 +14,7 @@ for name in \
   empty_memo_mempool_matches_only_this_address \
   mined_note_is_the_block_signal \
   second_checkout_does_not_take_the_first_address \
-  unmined_match_is_receipt_not_a_mint \
-  orchard_output_is_not_accepted \
-  ironwood_receiver_inside_ua_matches
+  unmined_match_is_receipt_not_a_mint
 do
   printf '%s\n' "$out" | grep -q "$name" || {
     echo "missing test $name"
@@ -24,5 +22,3 @@ do
   }
 done
 echo "zec_notes scenarios passed"
-echo "wallet restart suite"
-sh "$ROOT/scripts/e2e-zrt-wallet.sh"

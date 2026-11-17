@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 # nftfi-bench is its own workspace.
-exclude = ["crates/randomness", "crates/zafu", "tests/suite/nftfi-bench"]
+exclude = ["crates/randomness", "crates/zafu", "tests/suite/nftfi-bench", "tools/svg-mint/crates/svg-mint-zrt"]
 members = [
     "contracts/accounts/ownership-verifier",
     "contracts/accounts/ownership-verifier/e2e",
@@ -151,10 +151,10 @@ members = [
     "tools/headstash/test-press",
     "tools/headstash/wire",
     "tools/svg-collections",
+    "tools/onboard-authz",
     "tools/svg-mint/crates/cw-dregg-svg-gate",
     "tools/svg-mint/crates/dregg",
     "tools/svg-mint/crates/svg-mint-fed",
-    "tools/svg-mint/crates/svg-mint-zrt",
 ]
 # zk-test-press is left out of default runs: its dev targets pull ict-rs without
 # the docker backend (bollard/DockerConfig unresolved) and several harnesses
@@ -305,10 +305,10 @@ default-members = [
     "tools/headstash/circuits/halo2",
     "tools/headstash/wire",
     "tools/svg-collections",
+    "tools/onboard-authz",
     "tools/svg-mint/crates/cw-dregg-svg-gate",
     "tools/svg-mint/crates/dregg",
     "tools/svg-mint/crates/svg-mint-fed",
-    "tools/svg-mint/crates/svg-mint-zrt",
 ]
 
 [workspace.package]
@@ -568,6 +568,7 @@ terp-frost = { path = "contracts/smart-accounts/terp-frost", default-features = 
 terp-iavl-lc = { path = "contracts/light-clients/terp-iavl-lc" }
 terp-oracle = { path = "crates/terp-oracle" }
 terp-oracle-derive = { path = "crates/terp-oracle-derive" }
+terp-onboard-authz = { path = "tools/onboard-authz" }
 terp-orch = { path = "tests/suite/terp-orch" }
 terp-passkey = { path = "contracts/smart-accounts/terp-passkey" }
 terp-recovery = { path = "contracts/smart-accounts/terp-recovery" }

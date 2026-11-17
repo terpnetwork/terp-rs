@@ -41,12 +41,12 @@ Search backups for `age-identity.txt` and `data.sqlite` before any `init`. Do no
 | `~/.terp/kr-onboard` | Absent. HashMerchant is not started. |
 | `~/.terpd-mainnet/keyring-test/svg-minter-admin` | File-backend key. Address show needs the passphrase. |
 | `~/.terp/dregg-svg-runtime.sk` | Present, 32 bytes, mode `0600`. Created once on 2026-10-28. |
-| Runtime minter `terp1z4zc83jvff6w5d6dap23nl75ah9f5s828na3z8` | `/health` `runtime_minter`. On 2026-10-30 the LCD balance was `22200000` uthiol, still under the 50 THIOL reserve. |
+| Runtime minter `terp1z4zc83jvff6w5d6dap23nl75ah9f5s828na3z8` | `/health` `runtime_minter`. Bank balance 0. Reason `minter_underfunded`. |
 | `~/.terp/dregg-svg-collections` | Not set. `DREGG_COLLECTIONS` is unset. Broadcast stays idle. |
 | Code-72 factory `terp188…fhlru` bank | `uthiol` balance 0. Health does not query it once the runtime key exists. |
 | Minter admin `terp1fxcc…` bank | Holds `uthiol`. The desk does not query this address, and this key does not sign mints. |
 
-`checkout_ready` stays false until `terp1z4zc83jvff6w5d6dap23nl75ah9f5s828na3z8` holds the 50 THIOL gas reserve and the code-98 fractal is admitted by simulate. An empty watch set is `collections_unset`. A contract that rejects the paymint message is `collection_rejected` and is not broadcast. Leave `DREGG_MINTER_FUNDED` unset. The mint execute is signed by the runtime key. It does not spend the NFT price. Code-71 Fractals and the 13 logos are not in the watch set. The HD seed file is not rotated from this desk.
+`checkout_ready` stays false until `terp1z4zc83jvff6w5d6dap23nl75ah9f5s828na3z8` holds the gas reserve and at least one collection is admitted by simulate. An empty watch set is `collections_unset`. A contract that rejects the empty-funds mint is `collection_rejected` and is not broadcast. Leave `DREGG_MINTER_FUNDED` unset. The mint execute is signed by the runtime key. It does not spend the NFT price. The live Fractals collection is not in the watch set.
 
 ## Still not this wallet
 
