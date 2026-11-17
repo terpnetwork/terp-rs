@@ -9,10 +9,23 @@ import json, os, shutil, subprocess, sys, time
 from pathlib import Path
 
 STATE = Path(os.environ.get("SVGC_STATE", Path.home() / "Library/Application Support/terp-svg-collections"))
-SITE = Path(os.environ.get("SVGC_SITE", Path(__file__).resolve().parents[4] / "websites" / "svg-collections"))
-# parents: harness, svg-collections, tools, terp-rs. Website is terp-core/websites.
+# The /svg site has one source: terp-core/websites/permissionless.money/svg (committed in that repo).
+# parents: harness, svg-collections, tools, terp-rs, crates, terp-core. The old websites/svg-collections is retired.
+SITE = Path(os.environ.get("SVGC_SITE", Path(__file__).resolve().parents[5] / "websites" / "permissionless.money" / "svg"))
 if not (SITE / "data" / "latent-benders.json").exists():
-    SITE = Path(__file__).resolve().parents[5] / "websites" / "svg-collections"
+    sys.exit(f"site not found: {SITE} (set SVGC_SITE to permissionless.money/svg)")
+# The pm pages read these from config/mainnet.json; a config without them breaks /svg/auction and
+# /svg/loans-raffles (2026-11-17 18:03 UTC). Publishing refuses such a config.
+REQUIRED_CONFIG = ("chain", "collections", "auction", "raffles", ("loans", "loansRaffles"))
+
+
+def config_problems(cfg):
+    missing = []
+    for key in REQUIRED_CONFIG:
+        alts = key if isinstance(key, tuple) else (key,)
+        if not any(cfg.get(k) for k in alts):
+            missing.append(" or ".join(alts))
+    return missing
 # permissionless.money/svg is served from this prefix. The old
 # static/permissionless.money/dist/svg/ copy is not the live site.
 LIVE = os.environ.get("SVGC_LIVE_PREFIX", "static/svg-collections/pm")
@@ -178,6 +191,10 @@ exit $fail
 
 
 def main():
+    with open(SITE / "config" / "mainnet.json") as f:
+        missing = config_problems(json.load(f))
+    if missing:
+        sys.exit(f"refusing: {SITE / 'config' / 'mainnet.json'} lacks {', '.join(missing)}")
     written = rebuild()
     for day, addr in written:
         print(f"study {day} {addr}")
@@ -202,6 +219,14 @@ def main():
                 continue
             paths.append((html, f"{CAS}/{cid}.html"))
             paths.append((html, f"{LIVE}/cas/{cid}.html"))
+    missing = config_problems(json.loads((site / "config" / "mainnet.json").read_text()))
+    if missing:
+        print(f"refusing to publish config/mainnet.json without {', '.join(missing)}", file=sys.stderr)
+        sys.exit(1)
+    if os.environ.get("SVGC_PUBLISH") != "1":
+        print(f"dry run: site {site}")
+        for local, key in paths:
+            print(f"would put {key} <- {local.relative_to(site)}")
     # A zero exit with the study still local is what left Day 7 off the site.
     if os.environ.get("SVGC_PUBLISH") == "1" and not upload(paths):
         sys.exit(1)
