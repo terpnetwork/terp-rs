@@ -256,6 +256,14 @@ fn main() {
         sessions: sessions::Log::open(format!("{store_path}.sessions.json")),
         recipients_path: recipients_path(&store_path),
     }));
+    match dregg::gas_drip::config() {
+        Some(c) => eprintln!(
+            "gas drip: on, {} uthiol per ZEC-paid mint recipient, only under {} uthiol, {}/day, once per address, minter reserve {} uthiol",
+            c.amount, c.max_recipient_balance, c.daily_cap, dregg::checkout::minter_gas_reserve()
+        ),
+        None => eprintln!("gas drip: off"),
+    }
+    eprintln!("zec watch: tick {}s, woken by the mempool stream", zec_tick_secs());
     spawn_note_watchers(fed.clone());
     spawn_stale_sweeper(fed.clone());
     for stream in listener.incoming().flatten() {
@@ -595,15 +603,28 @@ fn spawn_note_watchers(fed: Arc<Mutex<Fed>>) {
         }
     });
     let f_zec = fed.clone();
-    std::thread::spawn(move || {
-        loop {
-            if let Err(e) = watch_zec_once(&f_zec) {
-                eprintln!("zec watch: {e}");
-            }
-            std::thread::sleep(std::time::Duration::from_secs(12));
-            try_broadcast_mints(&f_zec);
+    std::thread::spawn(move || loop {
+        let started = std::time::Instant::now();
+        if let Err(e) = watch_zec_once(&f_zec) {
+            eprintln!("zec watch: {e}");
+        }
+        let ms = started.elapsed().as_millis();
+        if ms > 5_000 {
+            eprintln!("zec watch: slow tick {ms} ms");
+        }
+        // Mint right away when a note just became mintable; minting never holds up the watcher.
+        let f_mint_now = f_zec.clone();
+        std::thread::spawn(move || try_broadcast_mints(&f_mint_now));
+        // Next scan on the tick, or as soon as the mempool stream reports a new tx / block.
+        zec_wait(std::time::Duration::from_secs(zec_tick_secs()));
+        // Floor between scans so a burst of mempool txs cannot hammer the compact server.
+        let gap = std::time::Duration::from_millis(ZEC_MIN_GAP_MS);
+        let spent = started.elapsed();
+        if spent < gap {
+            std::thread::sleep(gap - spent);
         }
     });
+    spawn_zec_mempool_stream();
     let f_mint = fed.clone();
     std::thread::spawn(move || {
         loop {
@@ -846,6 +867,96 @@ fn watch_btc_once(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
         btc_watch_drop(addr);
     }
     Ok(())
+}
+
+// ── ZEC wake: the mempool stream (svg-mint-zrt mempool-watch, lightwalletd GetMempoolStream on
+// the house compact server) wakes the ZEC watcher as soon as a tx enters the mempool or a block
+// lands, instead of waiting for the next tick. Matching is unchanged: memo-only, same notes path.
+static ZEC_WAKE: (std::sync::Mutex<bool>, std::sync::Condvar) =
+    (std::sync::Mutex::new(false), std::sync::Condvar::new());
+const ZEC_MIN_GAP_MS: u64 = 1_000;
+
+/// Fallback scan interval (seconds) when the stream is quiet. `SVG_MINT_ZEC_TICK_SECS`, 3…60, default 8.
+fn zec_tick_secs() -> u64 {
+    std::env::var("SVG_MINT_ZEC_TICK_SECS")
+        .ok()
+        .and_then(|s| s.trim().parse().ok())
+        .unwrap_or(8u64)
+        .clamp(3, 60)
+}
+
+fn zec_wake() {
+    let (m, c) = &ZEC_WAKE;
+    *m.lock().unwrap_or_else(|e| e.into_inner()) = true;
+    c.notify_all();
+}
+
+fn zec_wait(timeout: std::time::Duration) {
+    let (m, c) = &ZEC_WAKE;
+    let g = m.lock().unwrap_or_else(|e| e.into_inner());
+    let (mut g, _) = c
+        .wait_timeout_while(g, timeout, |woken| !*woken)
+        .unwrap_or_else(|e| e.into_inner());
+    *g = false;
+}
+
+/// Long-lived `svg-mint-zrt mempool-watch`: one gRPC stream to the house compact server.
+/// Each stdout line ("tx …" or "tip") wakes the ZEC watcher. Restarts with a backoff if it exits.
+/// Off with `SVG_MINT_ZEC_MEMPOOL_STREAM=0`.
+fn spawn_zec_mempool_stream() {
+    if std::env::var("SVG_MINT_ZEC_MEMPOOL_STREAM").ok().as_deref() == Some("0") {
+        eprintln!("zec mempool stream: off (SVG_MINT_ZEC_MEMPOOL_STREAM=0)");
+        return;
+    }
+    std::thread::spawn(|| {
+        use std::io::BufRead;
+        let mut backoff = 2u64;
+        loop {
+            let bin = match std::env::var("SVG_MINT_ZRT_BIN") {
+                Ok(b) if !b.is_empty() => b,
+                _ => "/home/returniflost/abstract/svg-mint/target/release/svg-mint-zrt".into(),
+            };
+            let started = std::time::Instant::now();
+            let child = std::process::Command::new(&bin)
+                .arg("mempool-watch")
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn();
+            match child {
+                Err(e) => eprintln!("zec mempool stream: spawn: {e}"),
+                Ok(mut ch) => {
+                    let err = ch.stderr.take();
+                    std::thread::spawn(move || {
+                        if let Some(err) = err {
+                            for line in std::io::BufReader::new(err).lines().map_while(Result::ok) {
+                                eprintln!("zec mempool stream: {}", line.chars().take(200).collect::<String>());
+                            }
+                        }
+                    });
+                    let mut events = 0u64;
+                    if let Some(out) = ch.stdout.take() {
+                        for line in std::io::BufReader::new(out).lines().map_while(Result::ok) {
+                            if line == "ready" {
+                                if events == 0 {
+                                    eprintln!("zec mempool stream: connected");
+                                }
+                                continue;
+                            }
+                            if line.starts_with("tx") || line == "tip" {
+                                events += 1;
+                                zec_wake();
+                            }
+                        }
+                    }
+                    let _ = ch.wait();
+                    eprintln!("zec mempool stream: exited after {events} events");
+                }
+            }
+            backoff = if started.elapsed().as_secs() > 60 { 2 } else { (backoff * 2).min(60) };
+            std::thread::sleep(std::time::Duration::from_secs(backoff));
+        }
+    });
 }
 
 /// ZEC observers: svg-mint-zrt notes, then house cookie mempool.
@@ -1566,7 +1677,7 @@ fn settle_paid_mint(
                 "svg-mint-fed minted {} transfer {}",
                 paid.mint_tx, paid.transfer_tx
             );
-            // Passkey gas drip (off unless SVG_MINT_PASSKEY_DRIP_UTHIOL > 0).
+            // Gas drip for every ZEC-paid mint recipient (off unless SVG_MINT_PASSKEY_DRIP_UTHIOL > 0).
             if let Some(cfg) = dregg::gas_drip::config() {
                 let to = recipient.to_string();
                 std::thread::spawn(move || dregg::gas_drip::maybe_drip(&cfg, &to));
@@ -2161,7 +2272,7 @@ fn write_phase_stream(
     stream.write_all(header.as_bytes())?;
     stream.set_nonblocking(false)?;
     let mut last = String::new();
-    for _ in 0..150 {
+    for _ in 0..300 {
         let body = {
             let f = fed.lock().unwrap();
             status_for(&f, &rec).to_string()
@@ -2177,7 +2288,7 @@ fn write_phase_stream(
         if last.contains("\"phase\":\"Settled\"") {
             break;
         }
-        std::thread::sleep(std::time::Duration::from_secs(2));
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
     Ok(())
 }
@@ -2455,6 +2566,13 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                     .unwrap_or(200usize)
                     .min(2000);
                 (200, json!({"ok": true, "actions": admin_actions(limit)}))
+            }
+        }
+        (m, p) if m == "GET" && p.starts_with("/v1/admin/drips") => {
+            if !admin_token_ok(admin_got.as_deref()) {
+                (401, json!({"ok": false, "error": "admin"}))
+            } else {
+                (200, dregg::gas_drip::status_json())
             }
         }
         (m, p) if m == "GET" && p.starts_with("/v1/admin/sponsor") => {

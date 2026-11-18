@@ -1,8 +1,9 @@
-//! Passkey gas drip: after a paid mint settles, send a small uthiol amount to a recipient
-//! that holds almost none, so a passkey-only account can transfer, burn or submit its pieces.
+//! Gas drip: after a ZEC-paid mint settles, send a small uthiol amount to the recipient when
+//! it holds almost none, so the minter's account (passkey or wallet) can transfer, burn or
+//! submit its pieces. Every settled paid mint goes through here, not only passkey accounts.
 //!
-//! OFF unless `SVG_MINT_PASSKEY_DRIP_UTHIOL` is set above 0. It spends the runtime minter's
-//! own THIOL on mainnet, so it stays off until the operator turns it on.
+//! OFF unless `SVG_MINT_PASSKEY_DRIP_UTHIOL` is set above 0 (the env name predates the wider
+//! scope). It spends the runtime minter's own THIOL on mainnet.
 //!
 //! Limits: one drip per address ever (ledger file), a daily count cap, recipients that
 //! already hold `SVG_MINT_PASSKEY_DRIP_MAX_BALANCE` uthiol or more are skipped, and the
@@ -83,6 +84,58 @@ impl Ledger {
     }
 }
 
+/// Recent drip outcomes (sent, skipped, failed), newest last, for the ops page.
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct DripEvent {
+    pub at: u64,
+    pub address: String,
+    pub outcome: &'static str,
+    pub detail: String,
+}
+
+static EVENTS: std::sync::Mutex<Vec<DripEvent>> = std::sync::Mutex::new(Vec::new());
+const EVENTS_KEEP: usize = 100;
+
+fn record(address: &str, outcome: &'static str, detail: String) {
+    let mut ev = EVENTS.lock().unwrap_or_else(|e| e.into_inner());
+    ev.push(DripEvent { at: now(), address: address.to_string(), outcome, detail });
+    let n = ev.len();
+    if n > EVENTS_KEEP {
+        ev.drain(..n - EVENTS_KEEP);
+    }
+}
+
+/// Config, ledger and recent outcomes, for `/v1/admin/drips`. No secrets: addresses and txids only.
+pub fn status_json() -> serde_json::Value {
+    let cfg = config();
+    let ledger = Ledger::load();
+    let t = now();
+    let mut rows: Vec<serde_json::Value> = ledger
+        .rows
+        .iter()
+        .map(|(a, r)| serde_json::json!({"address": a, "at": r.at, "amount": r.amount, "tx": r.tx}))
+        .collect();
+    rows.sort_by(|a, b| b["at"].as_u64().cmp(&a["at"].as_u64()));
+    rows.truncate(200);
+    let events: Vec<DripEvent> = {
+        let ev = EVENTS.lock().unwrap_or_else(|e| e.into_inner());
+        ev.iter().rev().cloned().collect()
+    };
+    serde_json::json!({
+        "ok": true,
+        "on": cfg.is_some(),
+        "amount_uthiol": cfg.as_ref().map(|c| c.amount.to_string()),
+        "daily_cap": cfg.as_ref().map(|c| c.daily_cap),
+        "max_recipient_balance_uthiol": cfg.as_ref().map(|c| c.max_recipient_balance.to_string()),
+        "minter_reserve_uthiol": crate::checkout::minter_gas_reserve().to_string(),
+        "source": "runtime minter",
+        "total": ledger.rows.len(),
+        "today": ledger.today_count(t),
+        "rows": rows,
+        "events": events,
+    })
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Decision {
     Send(u128),
@@ -133,17 +186,23 @@ pub fn maybe_drip(cfg: &DripConfig, recipient: &str) {
     let rb = match crate::mint_tx::balance_uthiol(recipient) {
         Ok(b) => b,
         Err(e) => {
-            eprintln!("passkey drip {recipient}: balance: {e}");
+            eprintln!("gas drip {recipient}: balance: {e}");
+            record(recipient, "error", format!("balance: {e}"));
             return;
         }
     };
     let Some(minter) = crate::mint_tx::address_if_present() else {
+        eprintln!("gas drip {recipient}: no runtime minter key");
+        record(recipient, "error", "no runtime minter key".into());
         return;
     };
     let mb = crate::mint_tx::balance_uthiol(&minter).unwrap_or(0);
     let t = now();
     match decide(cfg, &ledger, recipient, rb, mb, crate::checkout::minter_gas_reserve(), t) {
-        Decision::Skip(why) => eprintln!("passkey drip {recipient}: skip ({why})"),
+        Decision::Skip(why) => {
+            eprintln!("gas drip {recipient}: skip ({why}; recipient {rb} uthiol, minter {mb} uthiol)");
+            record(recipient, "skip", format!("{why}; recipient {rb} uthiol"));
+        }
         Decision::Send(amount) => match crate::mint_tx::send_uthiol(recipient, amount) {
             Ok(tx) => {
                 ledger.rows.insert(
@@ -151,11 +210,15 @@ pub fn maybe_drip(cfg: &DripConfig, recipient: &str) {
                     DripRow { at: t, amount: amount.to_string(), tx: tx.clone() },
                 );
                 if let Err(e) = ledger.save() {
-                    eprintln!("passkey drip ledger: {e}");
+                    eprintln!("gas drip ledger: {e}");
                 }
-                eprintln!("passkey drip {recipient}: sent {amount} uthiol tx {tx}");
+                eprintln!("gas drip {recipient}: sent {amount} uthiol tx {tx}");
+                record(recipient, "sent", format!("{amount} uthiol tx {tx}"));
             }
-            Err(e) => eprintln!("passkey drip {recipient}: send: {e}"),
+            Err(e) => {
+                eprintln!("gas drip {recipient}: send: {e}");
+                record(recipient, "error", format!("send: {e}"));
+            }
         },
     }
 }
@@ -189,6 +252,32 @@ mod tests {
         assert_eq!(decide(&cfg(), &l, A, 0, 100_000_000, 50_000_000, 1_000), Decision::Send(100_000));
         l.rows.insert(A.into(), DripRow { at: 1_000, amount: "100000".into(), tx: "T".into() });
         assert_eq!(decide(&cfg(), &l, A, 0, 100_000_000, 50_000_000, 2_000), Decision::Skip("already dripped"));
+    }
+
+    #[test]
+    fn one_thiol_drip_with_one_thiol_threshold() {
+        let get = |k: &str| match k {
+            "SVG_MINT_PASSKEY_DRIP_UTHIOL" => Some("1000000".to_string()),
+            "SVG_MINT_PASSKEY_DRIP_MAX_BALANCE" => Some("1000000".to_string()),
+            _ => None,
+        };
+        let c = config_from(get).unwrap();
+        assert_eq!(c, DripConfig { amount: 1_000_000, daily_cap: 25, max_recipient_balance: 1_000_000 });
+        let l = Ledger::default();
+        // Under 1 THIOL: send 1 THIOL. At 1 THIOL or more: skip.
+        assert_eq!(decide(&c, &l, A, 999_999, 121_000_000, 50_000_000, 0), Decision::Send(1_000_000));
+        assert_eq!(decide(&c, &l, A, 1_000_000, 121_000_000, 50_000_000, 0), Decision::Skip("recipient has gas"));
+        // Never below the 50 THIOL reserve.
+        assert_eq!(decide(&c, &l, A, 0, 50_999_999, 50_000_000, 0), Decision::Skip("minter below reserve"));
+        assert_eq!(decide(&c, &l, A, 0, 51_000_000, 50_000_000, 0), Decision::Send(1_000_000));
+    }
+
+    #[test]
+    fn status_lists_events() {
+        record("terp1x", "skip", "already dripped".into());
+        let v = status_json();
+        assert!(v["events"].as_array().unwrap().iter().any(|e| e["address"] == "terp1x" && e["outcome"] == "skip"));
+        assert!(v.get("minter_reserve_uthiol").is_some());
     }
 
     #[test]

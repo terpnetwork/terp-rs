@@ -666,6 +666,62 @@ fn confirm_mined_notes(notes: &mut Vec<serde_json::Value>) {
     }
 }
 
+/// One GetMempoolStream session on the house compact server: prints "tx <bytes>" per new mempool
+/// tx. The server ends the stream when a block lands; the caller prints "tip" and reconnects.
+/// The tx bytes are not parsed here: the fed only uses a line as a wake-up to run `notes`.
+async fn mempool_stream_once(url: &str) -> Result<u64, String> {
+    use std::io::Write;
+    use zync_core::client::lightwalletd_proto::{Empty, RawTransaction};
+    let channel = tonic::transport::Endpoint::from_shared(url.to_string())
+        .map_err(|e| format!("endpoint: {e}"))?
+        .connect()
+        .await
+        .map_err(|e| format!("connect: {e}"))?;
+    let mut grpc = tonic::client::Grpc::new(channel);
+    grpc.ready().await.map_err(|e| format!("ready: {e}"))?;
+    let path = tonic::codegen::http::uri::PathAndQuery::from_static(
+        "/cash.z.wallet.sdk.rpc.CompactTxStreamer/GetMempoolStream",
+    );
+    let codec: tonic::codec::ProstCodec<Empty, RawTransaction> = tonic::codec::ProstCodec::default();
+    let mut stream = grpc
+        .server_streaming(tonic::Request::new(Empty {}), path, codec)
+        .await
+        .map_err(|e| format!("stream: {e}"))?
+        .into_inner();
+    let mut out = std::io::stdout();
+    let _ = writeln!(out, "ready");
+    let _ = out.flush();
+    let mut n = 0u64;
+    while let Some(tx) = stream.message().await.map_err(|e| format!("stream: {e}"))? {
+        n += 1;
+        if writeln!(out, "tx {}", tx.data.len()).and_then(|_| out.flush()).is_err() {
+            std::process::exit(0); // the fed went away
+        }
+    }
+    Ok(n)
+}
+
+fn cmd_mempool_watch() -> ! {
+    use std::io::Write;
+    let url = compact_server().unwrap_or_else(|e| die(&e));
+    let rt = runtime();
+    loop {
+        match rt.block_on(mempool_stream_once(&url)) {
+            Ok(_) => {
+                let mut out = std::io::stdout();
+                if writeln!(out, "tip").and_then(|_| out.flush()).is_err() {
+                    std::process::exit(0);
+                }
+                std::thread::sleep(std::time::Duration::from_millis(250));
+            }
+            Err(e) => {
+                eprintln!("mempool-watch: {e}");
+                std::thread::sleep(std::time::Duration::from_secs(5));
+            }
+        }
+    }
+}
+
 async fn sync_compact() -> Result<(), String> {
     let url = compact_server()?;
     let mut client = LightwalletdClient::connect(&url)
@@ -969,6 +1025,7 @@ fn main() {
                sync\n\
                addresses\n\
                notes\n\
+               mempool-watch   (stream: one line per new mempool tx, \"tip\" per block)\n\
                send --zat <n> --address <u1…> [--dry-run]\n\
              \n\
              Compact server: ZTREAMER_GRPC or ZCASH_DEVTOOL_SERVER (required, loopback, never zec.rocks)."
@@ -991,6 +1048,7 @@ fn main() {
             println!("{}", read_notes());
         }
         "send" => cmd_send(&args),
+        "mempool-watch" => cmd_mempool_watch(),
         "wallet-check" => {
             let url = compact_server().unwrap_or_else(|e| die(&e));
             let r = runtime().block_on(async {
