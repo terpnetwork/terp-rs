@@ -12,6 +12,7 @@ pub mod cell;
 pub mod checkout;
 pub mod collections;
 pub mod commit;
+pub mod gas_drip;
 pub mod hd;
 pub mod hopalong;
 pub mod httpx;

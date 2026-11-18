@@ -334,12 +334,24 @@ fn tx_raw_as(
         gas,
         fee_amount,
     } = *params;
-    let pk = sk.verifying_key().to_sec1_point(true);
     let mut body = Vec::new();
     for msg in msgs {
         let exec = msg_execute(sender, contract, msg);
         body.extend(ld(1, &any(MSG_TYPE, &exec)));
     }
+    sign_body(sk, body, account_number, sequence, chain_id, gas, fee_amount)
+}
+
+fn sign_body(
+    sk: &SigningKey,
+    body: Vec<u8>,
+    account_number: u64,
+    sequence: u64,
+    chain_id: &str,
+    gas: u64,
+    fee_amount: u128,
+) -> Result<Vec<u8>, String> {
+    let pk = sk.verifying_key().to_sec1_point(true);
     let pk_msg = ld(1, pk.as_bytes());
     let pk_any = any(PK_TYPE, &pk_msg);
     let mut signer = ld(1, &pk_any);
@@ -785,6 +797,51 @@ fn submit(
     let committed = poll_tx(&lcd, &hash)?;
     let ids = token_ids_from_tx(&committed);
     Ok((hash, ids))
+}
+
+/// uthiol balance of any address.
+pub fn balance_uthiol(addr: &str) -> Result<u128, String> {
+    minter_balance_uthiol(addr)
+}
+
+/// MsgSend body bytes (cosmos.bank.v1beta1.MsgSend) as a TxBody `messages` entry.
+pub fn bank_send_any(from: &str, to: &str, denom: &str, amount: u128) -> Vec<u8> {
+    let mut m = ld(1, from.as_bytes());
+    m.extend(ld(2, to.as_bytes()));
+    m.extend(ld(3, &coin_msg(denom, &amount.to_string())));
+    ld(1, &any("/cosmos.bank.v1beta1.MsgSend", &m))
+}
+
+/// Gas for one MsgSend (simulated ~70k on morocco-1; headroom).
+pub fn send_gas() -> u64 {
+    std::env::var("SVG_MINT_SEND_GAS").ok().and_then(|s| s.parse().ok()).filter(|n: &u64| *n > 0).unwrap_or(120_000)
+}
+
+/// Send `amount` uthiol from the runtime minter to `to`; waits for the commit. Used only by
+/// the passkey gas drip, which is off unless configured.
+pub fn send_uthiol(to: &str, amount: u128) -> Result<String, String> {
+    if !to.starts_with("terp1") {
+        return Err("send recipient must be terp1".into());
+    }
+    let secret = load_or_create_secret()?;
+    let sk = SigningKey::from_slice(&secret).map_err(|e| e.to_string())?;
+    let lcd = lcd_base()?;
+    let sender = address_of(&secret)?;
+    let acct = crate::httpx::get_json(&format!("{lcd}/cosmos/auth/v1beta1/accounts/{sender}"))?;
+    let (account_number, sequence) = account_number_sequence(&acct)?;
+    let gas = send_gas();
+    let body = bank_send_any(&sender, to, "uthiol", amount);
+    let raw = sign_body(&sk, body, account_number, sequence, &chain_id(), gas, fee_uthiol(gas))?;
+    let sent = crate::httpx::post_json(
+        &format!("{lcd}/cosmos/tx/v1beta1/txs"),
+        &serde_json::json!({"tx_bytes": b64(&raw), "mode": "BROADCAST_MODE_SYNC"}),
+    )?;
+    let hash = tx_hash(&sent).ok_or("send: no txhash")?;
+    if let Some(code) = tx_code(&sent).filter(|c| *c != 0) {
+        return Err(format!("send code {code} {hash}"));
+    }
+    poll_tx(&lcd, &hash)?;
+    Ok(hash)
 }
 
 fn poll_tx(lcd: &str, hash: &str) -> Result<serde_json::Value, String> {

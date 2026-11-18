@@ -1449,6 +1449,11 @@ fn settle_paid_mint(
                 "svg-mint-fed minted {} transfer {}",
                 paid.mint_tx, paid.transfer_tx
             );
+            // Passkey gas drip (off unless SVG_MINT_PASSKEY_DRIP_UTHIOL > 0).
+            if let Some(cfg) = dregg::gas_drip::config() {
+                let to = recipient.to_string();
+                std::thread::spawn(move || dregg::gas_drip::maybe_drip(&cfg, &to));
+            }
         }
         Err(e) => eprintln!("svg-mint-fed settle after mint: {e}"),
     }
