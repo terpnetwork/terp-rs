@@ -1,14 +1,16 @@
 //! Notes the house view wallet has already trial-decrypted.
 //!
-//! A note is this checkout only when its address is that checkout's diversified
-//! UA, or its memo is that checkout's payment id. A mempool note (`mined == false`)
-//! is receipt, not a mint. A mined note is the block signal.
+//! A note is a checkout's payment only when its memo is that checkout's one-time
+//! payment id (Pedersen C, carried in the ZIP-321 `memo=`), it pays at least the
+//! checkout price, and it was not mined before the checkout was issued. Every
+//! checkout shares one house UA, so the address or receiver never picks a checkout.
+//! A mempool note (`mined == false`) is receipt, not a mint. A mined note is the block signal.
 
 use crate::pedersen::Commit;
-use crate::store::{PendingPay, dest_for_zec_watch};
+use crate::store::{PendingPay, dest_for_commit};
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SeenNote {
     pub txid: String,
     pub address: String,
@@ -19,32 +21,83 @@ pub struct SeenNote {
     pub pool: String,
     /// Hex of the 43-byte Orchard receiver inside an Ironwood note.
     pub receiver: String,
+    /// The full note was decrypted and `memo` is its real memo (possibly empty).
+    pub memo_checked: bool,
+    /// Block time of the mined tx (unix seconds). 0 = unknown or mempool.
+    pub time: u64,
+    pub height: u64,
 }
 
-pub fn match_note(pending: &HashMap<Commit, PendingPay>, note: &SeenNote) -> Option<String> {
+/// Block timestamps may run behind wall clock; consensus allows about two hours.
+pub const PAY_TIME_SKEW_SECS: u64 = 2 * 60 * 60;
+
+/// Why a note did or did not bind to a checkout.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum MemoMatch {
+    Match { commit: Commit, terp: String },
+    Pool,
+    NoMemo,
+    UnknownMemo,
+    Underpaid { need: u64 },
+    BeforeCheckout,
+}
+
+impl MemoMatch {
+    pub fn reason(&self) -> &'static str {
+        match self {
+            MemoMatch::Match { .. } => "matched",
+            MemoMatch::Pool => "pool",
+            MemoMatch::NoMemo => "no memo",
+            MemoMatch::UnknownMemo => "unknown memo",
+            MemoMatch::Underpaid { .. } => "underpaid",
+            MemoMatch::BeforeCheckout => "before checkout",
+        }
+    }
+}
+
+/// Memo-only binding. `unit_fallback` is the per-NFT zat for snapshots with no quote.
+pub fn match_note_memo(
+    pending: &HashMap<Commit, PendingPay>,
+    note: &SeenNote,
+    unit_fallback: u64,
+) -> MemoMatch {
     if !pool_accepted(&note.pool) {
-        return None;
+        return MemoMatch::Pool;
     }
-    let ua = note.address.trim();
-    if ua.starts_with("u1") {
-        if let Some(p) = pending.values().find(|p| p.zec_ua.as_deref() == Some(ua)) {
-            return Some(p.terp.clone());
+    let memo = note.memo.trim();
+    if memo.is_empty() || memo == "Memo::Empty" {
+        return MemoMatch::NoMemo;
+    }
+    let Some(c) = crate::zip321::commit_from_watch_memo(memo) else {
+        return MemoMatch::UnknownMemo;
+    };
+    let Some(terp) = dest_for_commit(pending, &c) else {
+        return MemoMatch::UnknownMemo;
+    };
+    let Some(p) = pending.get(&c) else {
+        return MemoMatch::UnknownMemo;
+    };
+    let unit = if p.zec_zat > 0 { p.zec_zat } else { unit_fallback };
+    let need = unit.saturating_mul(p.qty.max(1) as u64);
+    if note.zat < need {
+        return MemoMatch::Underpaid { need };
+    }
+    if note.time > 0 && p.issued_at > 0 && note.time.saturating_add(PAY_TIME_SKEW_SECS) < p.issued_at {
+        return MemoMatch::BeforeCheckout;
+    }
+    MemoMatch::Match { commit: c, terp }
+}
+
+/// Checkout address for this note, by memo only (any amount, any time). See `match_note_memo`.
+pub fn match_note(pending: &HashMap<Commit, PendingPay>, note: &SeenNote) -> Option<String> {
+    match match_note_memo(pending, note, 0) {
+        MemoMatch::Match { terp, .. } => Some(terp),
+        MemoMatch::Underpaid { .. } | MemoMatch::BeforeCheckout => {
+            let c = crate::zip321::commit_from_watch_memo(note.memo.trim())?;
+            dest_for_commit(pending, &c)
         }
+        _ => None,
     }
-    let receiver = note.receiver.trim();
-    if !receiver.is_empty() {
-        if let Some(p) = pending.values().find(|p| {
-            p.zec_ua
-                .as_deref()
-                .is_some_and(|ua| ua_contains_orchard_receiver(ua, receiver))
-        }) {
-            return Some(p.terp.clone());
-        }
-    }
-    if !note.memo.is_empty() && note.memo != "Memo::Empty" {
-        return dest_for_zec_watch(pending, &note.memo, note.memo.as_bytes());
-    }
-    None
 }
 
 fn pool_accepted(pool: &str) -> bool {
@@ -130,6 +183,9 @@ pub fn parse_list_tx(text: &str) -> Vec<SeenNote> {
                     pool.to_string()
                 },
                 receiver: String::new(),
+                memo_checked: true,
+                time: 0,
+                height: 0,
             });
         }
     };
@@ -237,6 +293,9 @@ pub fn parse_notes_json(raw: &str) -> Result<Vec<SeenNote>, String> {
                 .and_then(|x| x.as_str())
                 .unwrap_or("")
                 .to_string(),
+            memo_checked: n.get("memo_checked").and_then(|x| x.as_bool()).unwrap_or(false),
+            time: n.get("time").and_then(|x| x.as_u64()).unwrap_or(0),
+            height: n.get("height").and_then(|x| x.as_u64()).unwrap_or(0),
         });
     }
     Ok(out)
@@ -248,8 +307,16 @@ mod tests {
     use crate::pedersen;
     use crate::store::PendingPay;
 
-    fn pending(terp: &str, ua: &str) -> (Commit, PendingPay) {
-        let (c, blinding) = pedersen::commit(terp, &mut rand::rng());
+    /// The one house UA every checkout shares (receiver 0x22…).
+    fn house_ua() -> String {
+        use zcash_address::unified::{Address as UAddr, Encoding, Receiver};
+        UAddr::try_from_items(vec![Receiver::Orchard([0x22u8; 43])])
+            .expect("receiver")
+            .encode(&zcash_protocol::consensus::NetworkType::Main)
+    }
+
+    fn pending(terp: &str, qty: u32, issued_at: u64) -> (Commit, PendingPay) {
+        let (c, blinding) = pedersen::commit(terp, &mut rand::rngs::OsRng);
         let p = PendingPay {
             terp: terp.into(),
             blinding,
@@ -257,14 +324,113 @@ mod tests {
             eth_addr: String::new(),
             btc_addr: String::new(),
             zec_div_hex: String::new(),
-            zec_ua: Some(ua.into()),
-            issued_at: 1,
-            qty: 1,
+            zec_ua: Some(house_ua()),
+            issued_at,
+            qty,
             session: Vec::new(),
             collection: String::new(),
-            zec_zat: 0,
+            zec_zat: 100_000,
         };
         (c, p)
+    }
+
+    fn note(memo: &str, zat: u64, time: u64) -> SeenNote {
+        SeenNote {
+            txid: "ee".repeat(32),
+            address: String::new(),
+            memo: memo.into(),
+            zat,
+            mined: true,
+            pool: "ironwood".into(),
+            receiver: hex::encode([0x22u8; 43]),
+            memo_checked: true,
+            time,
+            height: 10,
+        }
+    }
+
+    #[test]
+    fn memo_matches_only_its_checkout() {
+        let (c1, p1) = pending("terp1a", 1, 1_000);
+        let (c2, p2) = pending("terp1b", 1, 1_000);
+        let mut map = HashMap::new();
+        map.insert(c1, p1);
+        map.insert(c2, p2);
+        let n = note(&pedersen::memo_hex(&c2), 100_000, 2_000);
+        assert_eq!(
+            match_note_memo(&map, &n, 0),
+            MemoMatch::Match { commit: c2, terp: "terp1b".into() }
+        );
+        assert_eq!(match_note(&map, &n).as_deref(), Some("terp1b"));
+        // The same memo as the ZIP-321 base64url param also binds.
+        let b64 = crate::zip321::memo_b64url(pedersen::memo_hex(&c1).as_bytes()).unwrap();
+        assert_eq!(match_note(&map, &note(&b64, 100_000, 2_000)).as_deref(), Some("terp1a"));
+    }
+
+    #[test]
+    fn zip321_uri_carries_the_matching_memo() {
+        let (c, p) = pending("terp1uri", 1, 1_000);
+        let uri = crate::zip321::payment_request(&house_ua(), 100_000, &c).unwrap();
+        let b64 = uri.split("memo=").nth(1).expect("memo param");
+        let mut map = HashMap::new();
+        map.insert(c, p);
+        let raw = crate::zip321::decode_memo_bytes(b64).unwrap();
+        let memo = String::from_utf8(raw).unwrap();
+        assert!(memo.starts_with("6431"));
+        assert_eq!(match_note(&map, &note(&memo, 100_000, 2_000)).as_deref(), Some("terp1uri"));
+    }
+
+    #[test]
+    fn wrong_memo_does_not_match() {
+        let (c1, p1) = pending("terp1a", 1, 1_000);
+        let (other, _) = pending("terp1z", 1, 1_000);
+        let mut map = HashMap::new();
+        map.insert(c1, p1);
+        assert_eq!(match_note_memo(&map, &note(&pedersen::memo_hex(&other), 100_000, 2_000), 0), MemoMatch::UnknownMemo);
+        assert_eq!(match_note_memo(&map, &note("thanks for the art", 100_000, 2_000), 0), MemoMatch::UnknownMemo);
+        assert!(match_note(&map, &note(&pedersen::memo_hex(&other), 100_000, 2_000)).is_none());
+    }
+
+    #[test]
+    fn no_memo_does_not_match_even_on_the_checkout_receiver() {
+        let (c1, p1) = pending("terp1a", 1, 1_000);
+        let mut map = HashMap::new();
+        map.insert(c1, p1);
+        assert_eq!(match_note_memo(&map, &note("", 100_000, 2_000), 0), MemoMatch::NoMemo);
+        assert_eq!(match_note_memo(&map, &note("Memo::Empty", 100_000, 2_000), 0), MemoMatch::NoMemo);
+        let mut by_addr = note("", 100_000, 2_000);
+        by_addr.address = house_ua();
+        assert!(match_note(&map, &by_addr).is_none());
+    }
+
+    #[test]
+    fn amount_and_time_are_checked() {
+        let (c, p) = pending("terp1q", 2, 100_000);
+        let mut map = HashMap::new();
+        map.insert(c, p);
+        let memo = pedersen::memo_hex(&c);
+        assert_eq!(match_note_memo(&map, &note(&memo, 199_999, 100_100), 0), MemoMatch::Underpaid { need: 200_000 });
+        assert!(matches!(match_note_memo(&map, &note(&memo, 200_000, 100_100), 0), MemoMatch::Match { .. }));
+        assert!(matches!(match_note_memo(&map, &note(&memo, 250_000, 100_100), 0), MemoMatch::Match { .. }));
+        assert_eq!(match_note_memo(&map, &note(&memo, 200_000, 10), 0), MemoMatch::BeforeCheckout);
+        // Block time inside the consensus skew still counts; mempool (time 0) is not dated.
+        assert!(matches!(match_note_memo(&map, &note(&memo, 200_000, 100_000 - 600), 0), MemoMatch::Match { .. }));
+        assert!(matches!(match_note_memo(&map, &note(&memo, 200_000, 0), 0), MemoMatch::Match { .. }));
+    }
+
+    #[test]
+    fn the_nov18_waiting_note_stays_unmatched() {
+        // a39435e8…104b: 200000 zat to the shared house receiver, paid to a settled checkout.
+        let (settled, _) = pending("terp1paidbefore", 2, 1_000);
+        let (fresh_c, fresh_p) = pending("terp1someoneelse", 2, 1_795_100_000);
+        let mut map = HashMap::new();
+        map.insert(fresh_c, fresh_p);
+        let mut n = note("", 200_000, 1_795_090_000);
+        n.txid = "a39435e84e3d8a919f0c03682c5f008db79f266d71488e0dcd198a13750f104b".into();
+        assert_eq!(match_note_memo(&map, &n, 0), MemoMatch::NoMemo);
+        n.memo = pedersen::memo_hex(&settled);
+        assert_eq!(match_note_memo(&map, &n, 0), MemoMatch::UnknownMemo);
+        assert!(match_note(&map, &n).is_none());
     }
 
     const SAMPLE: &str = "\
@@ -274,67 +440,34 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\
   Output 0 (Ironwood)\n\
     Value:   0.00150000 ZEC\n\
     Received by account: acct (dregg)\n\
-    To: u1checkoutaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\
+    To: u1checkout\n\
     Memo: Memo::Empty\n\
 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\
      Mined: 10\n\
   Output 0 (Ironwood)\n\
     Value:   0.00150000 ZEC\n\
     Received by account: acct (dregg)\n\
-    To: u1otherbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\
+    To: u1other\n\
     Memo: Memo::Empty\n";
-
-    #[test]
-    fn empty_memo_mempool_matches_only_this_address() {
-        let (c, p) = pending(
-            "terp1desk",
-            "u1checkoutaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        );
-        let mut map = HashMap::new();
-        map.insert(c, p);
-        let notes = parse_list_tx(SAMPLE);
-        assert_eq!(notes.len(), 2);
-        assert!(!notes[0].mined);
-        assert_eq!(notes[0].zat, 150_000);
-        assert_eq!(match_note(&map, &notes[0]).as_deref(), Some("terp1desk"));
-        assert!(match_note(&map, &notes[1]).is_none());
-    }
 
     #[test]
     fn mined_note_is_the_block_signal() {
         let notes = parse_list_tx(SAMPLE);
+        assert_eq!(notes.len(), 2);
+        assert_eq!(notes[0].zat, 150_000);
         assert!(notes[1].mined);
         assert!(!notes[0].mined);
+        assert!(notes[0].memo.is_empty());
     }
 
     #[test]
-    fn second_checkout_does_not_take_the_first_address() {
-        let (c1, p1) = pending(
-            "terp1a",
-            "u1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        );
-        let (c2, p2) = pending(
-            "terp1b",
-            "u1bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        );
-        let mut map = HashMap::new();
-        map.insert(c1, p1);
-        map.insert(c2, p2);
-        let note = SeenNote {
-            txid: "cc".into(),
-            address: "u1bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".into(),
-            memo: String::new(),
-            zat: 1,
-            mined: false,
-            pool: "ironwood".into(),
-            receiver: String::new(),
-        };
-        assert_eq!(match_note(&map, &note).as_deref(), Some("terp1b"));
-        let first = SeenNote {
-            address: "u1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
-            ..note
-        };
-        assert_eq!(match_note(&map, &first).as_deref(), Some("terp1a"));
+    fn notes_json_reads_memo_fields() {
+        let raw = r#"{"notes":[{"txid":"ab","memo":"6431","zat":5,"mined":true,"pool":"ironwood","receiver":"","memo_checked":true,"time":7,"height":9}]}"#;
+        let n = parse_notes_json(raw).unwrap();
+        assert!(n[0].memo_checked);
+        assert_eq!((n[0].time, n[0].height), (7, 9));
+        let old = parse_notes_json(r#"{"notes":[{"txid":"ab","zat":5}]}"#).unwrap();
+        assert!(!old[0].memo_checked);
     }
 
     #[test]
@@ -347,54 +480,17 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\
 
     #[test]
     fn orchard_output_is_not_accepted() {
-        let ua = "u1checkoutaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-        let text = format!(
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\
-     Mined: 10\n\
-  Output 0 (Orchard)\n\
-    Value:   0.00150000 ZEC\n\
-    Received by account: acct (dregg)\n\
-    To: {ua}\n\
-    Memo: Memo::Empty\n"
-        );
-        assert!(parse_list_tx(&text).is_empty());
-        let (c, p) = pending("terp1desk", ua);
+        let (c, p) = pending("terp1desk", 1, 1_000);
         let mut map = HashMap::new();
         map.insert(c, p);
-        let note = SeenNote {
-            txid: "aa".into(),
-            address: ua.into(),
-            memo: String::new(),
-            zat: 1,
-            mined: true,
-            pool: "orchard".into(),
-            receiver: String::new(),
-        };
-        assert!(match_note(&map, &note).is_none());
+        let mut n = note(&pedersen::memo_hex(&c), 100_000, 2_000);
+        n.pool = "orchard".into();
+        assert_eq!(match_note_memo(&map, &n, 0), MemoMatch::Pool);
     }
 
     #[test]
-    fn ironwood_receiver_inside_ua_matches() {
-        use zcash_address::unified::{Address as UAddr, Encoding, Receiver};
-        let raw = [0x22u8; 43];
-        let ua = UAddr::try_from_items(vec![Receiver::Orchard(raw)])
-            .expect("receiver")
-            .encode(&zcash_protocol::consensus::NetworkType::Main);
-        let (c, p) = pending("terp1iron", &ua);
-        let mut map = HashMap::new();
-        map.insert(c, p);
-        let note = SeenNote {
-            txid: "dd".into(),
-            address: String::new(),
-            memo: String::new(),
-            zat: 150_000,
-            mined: false,
-            pool: "ironwood".into(),
-            receiver: hex::encode(raw),
-        };
-        assert_eq!(match_note(&map, &note).as_deref(), Some("terp1iron"));
-        let mut other = note.clone();
-        other.receiver = hex::encode([0x23u8; 43]);
-        assert!(match_note(&map, &other).is_none());
+    fn ironwood_receiver_inside_ua_helper_still_works() {
+        assert!(ua_contains_orchard_receiver(&house_ua(), &hex::encode([0x22u8; 43])));
+        assert!(!ua_contains_orchard_receiver(&house_ua(), &hex::encode([0x23u8; 43])));
     }
 }

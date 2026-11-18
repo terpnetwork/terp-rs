@@ -133,6 +133,16 @@ pub fn zec_txid_alias_nullifier(rail: Rail, amount: u128, raw: &[u8]) -> Option<
     Some(nullifier(&observed_opening(rail, amount, alt)))
 }
 
+/// Every nullifier this ZEC payment may already be credited under (both txid byte orders).
+/// Read-only: the watcher uses it to tell a credited note from an unmatched one.
+pub fn zec_credit_nullifiers(amount: u128, raw: &[u8]) -> Vec<[u8; 32]> {
+    let mut v = vec![nullifier(&observed_opening(Rail::ZecIronwood, amount, raw.to_vec()))];
+    if let Some(alias) = zec_txid_alias_nullifier(Rail::ZecIronwood, amount, raw) {
+        v.push(alias);
+    }
+    v
+}
+
 #[cfg(test)]
 mod txid_alias_tests {
     use super::*;
@@ -160,6 +170,19 @@ mod txid_alias_tests {
         assert_eq!(n_first.to_vec(), h("30e737e8421bc458ab8f803ab96f7f6d8e6c1374bb496aff4afd645d77eb41e8"));
         assert_eq!(n_second.to_vec(), h("bf4f2393a356d5fd942688b781d5b4019179114b52002a272387e938bb71c196"));
         assert_eq!(zec_txid_alias_nullifier(Rail::ZecIronwood, 200_000, &second), Some(n_first));
+    }
+
+    /// The duplicate guard still holds: one note seen under either byte order is one credit.
+    #[test]
+    fn credit_nullifiers_cover_both_byte_orders() {
+        let h = |s: &str| (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect::<Vec<u8>>();
+        let first = h("1966b60f6c2e1dee2f797b21dd418aa18fc7d88af04fdf04bf5b9b730fd55b20");
+        let second = h("205bd50f739b5bbf04df4ff08ad8c78fa18a41dd217b792fee1d2e6c0fb66619");
+        let n_first = nullifier(&observed_opening(Rail::ZecIronwood, 200_000, first.clone()));
+        assert!(zec_credit_nullifiers(200_000, &first).contains(&n_first));
+        assert!(zec_credit_nullifiers(200_000, &second).contains(&n_first));
+        let other = h("a39435e84e3d8a919f0c03682c5f008db79f266d71488e0dcd198a13750f104b");
+        assert!(!zec_credit_nullifiers(200_000, &other).contains(&n_first));
     }
 
     #[test]

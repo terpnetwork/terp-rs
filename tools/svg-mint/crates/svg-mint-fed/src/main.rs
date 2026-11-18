@@ -945,16 +945,22 @@ fn watch_zec_zrt(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
         let f = fed.lock().unwrap();
         f.pending.clone()
     };
+    let unit = prices::zec_zat();
     for note in notes {
-        let Some(rec) = dregg::zec_notes::match_note(&pending, &note) else {
-            continue;
-        };
         let txid = if note.txid.is_empty() {
             hex::encode(blake3::hash(note.address.as_bytes()).as_bytes())
         } else {
             note.txid.clone()
         };
         let raw = hex::decode(&txid).unwrap_or_else(|_| txid.as_bytes().to_vec());
+        // Memo-only binding: every checkout shares the house UA, so the receiver picks nothing.
+        let rec = match dregg::zec_notes::match_note_memo(&pending, &note, unit) {
+            dregg::zec_notes::MemoMatch::Match { terp, .. } => terp,
+            miss => {
+                note_unmatched(fed, &note, &txid, &raw, unit, miss.reason());
+                continue;
+            }
+        };
         let zat = if note.zat == 0 {
             zec_paid_fallback(fed, &rec)
         } else {
@@ -971,6 +977,117 @@ fn watch_zec_zrt(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// A mined ZEC note no open checkout took: list it once in ops for an admin. Never credits.
+/// Notes already credited (either txid byte order) are skipped; so are notes whose memo
+/// the house has not read yet.
+fn note_unmatched(
+    fed: &Arc<Mutex<Fed>>,
+    note: &dregg::zec_notes::SeenNote,
+    txid: &str,
+    raw: &[u8],
+    unit: u64,
+    reason: &str,
+) {
+    if !note.mined || note.zat == 0 || !(note.memo_checked || !note.memo.trim().is_empty()) {
+        return;
+    }
+    let mut f = fed.lock().unwrap();
+    let credited = dregg::commit::zec_credit_nullifiers(note.zat as u128, raw)
+        .iter()
+        .any(|n| f.cell.phase(n).is_some());
+    if credited {
+        return;
+    }
+    let mut ids = vec![txid.to_string()];
+    if raw.len() == 32 {
+        let mut r = raw.to_vec();
+        r.reverse();
+        ids.push(hex::encode(r));
+    }
+    let qty = if unit > 0 {
+        (note.zat / unit).min(u32::MAX as u64) as u32
+    } else {
+        1
+    };
+    if f.sessions
+        .record_unmatched(&ids, note.zat, qty, note.memo.trim(), reason)
+    {
+        eprintln!(
+            "zec unmatched: {} {} zat ({reason})",
+            &txid[..txid.len().min(12)],
+            note.zat
+        );
+    }
+}
+
+/// Admin action on an unmatched ZEC payment. Refund / resolve only record. Mint-to names
+/// the owner (attribution) and sends the mint for the row's qty.
+fn admin_unmatched(
+    fed: &Arc<Mutex<Fed>>,
+    row: &sessions::SessionRow,
+    action: &str,
+    terp: &str,
+    qty: u32,
+) -> (u16, serde_json::Value) {
+    match action {
+        "refund" | "resolve" => {
+            let phase = if action == "refund" {
+                "refunded"
+            } else {
+                "resolved"
+            };
+            let mut g = fed.lock().unwrap();
+            g.sessions.set_row(row.id, phase, &row.txid, "");
+            (
+                200,
+                json!({"ok": true, "phase": phase, "prior_phase": row.phase, "zec_txid": row.txid}),
+            )
+        }
+        "mint-to" => {
+            if !terp.starts_with("terp1") || terp.len() < 39 {
+                return (
+                    400,
+                    json!({"ok": false, "error": "a terp1 address is required to attribute this payment"}),
+                );
+            }
+            if row.phase == "attributed" && !row.terp.is_empty() && row.terp != terp {
+                return (
+                    409,
+                    json!({"ok": false, "error": format!("already attributed to {}", row.terp)}),
+                );
+            }
+            let attributed = {
+                let mut g = fed.lock().unwrap();
+                g.sessions.attribute(row.id, terp, qty)
+            };
+            let row = match attributed {
+                Ok(r) => r,
+                Err(e) => return (409, json!({"ok": false, "error": e})),
+            };
+            let coll = match dregg::collections::resolve(None) {
+                Ok(c) => c,
+                Err(e) => return (409, json!({"ok": false, "error": e, "phase": "attributed"})),
+            };
+            match dregg::mint_tx::broadcast_paid_mint(&coll, terp, row.qty.max(1)) {
+                Ok(paid) => {
+                    let tok = paid.token_ids.first().cloned().unwrap_or_default();
+                    let mut g = fed.lock().unwrap();
+                    g.sessions.set_row(row.id, "minted", &paid.mint_tx, &tok);
+                    (
+                        200,
+                        json!({"ok": true, "phase": "minted", "tx": paid.mint_tx, "token_id": tok, "attributed": true, "qty": row.qty, "zec_txid": row.txid}),
+                    )
+                }
+                Err(e) => (409, json!({"ok": false, "error": e, "phase": "attributed"})),
+            }
+        }
+        _ => (
+            400,
+            json!({"ok": false, "error": "action is mint-to, refund or resolve"}),
+        ),
+    }
 }
 
 fn zcash_cookie_rpc(method: &str, params: serde_json::Value) -> Result<serde_json::Value, String> {
@@ -2260,7 +2377,13 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                     .take(200)
                     .collect::<String>();
                 let who = admin_who(admin_got.as_deref());
-                let (code, out) = if terp.is_empty() {
+                let qty = v.get("qty").and_then(|x| x.as_u64()).unwrap_or(0).min(50) as u32;
+                let unmatched_row = id
+                    .and_then(|i| fed.lock().unwrap().sessions.row(i))
+                    .filter(|r| matches!(r.phase.as_str(), "unmatched" | "attributed"));
+                let (code, out) = if let Some(row) = unmatched_row.as_ref() {
+                    admin_unmatched(&fed, row, &action, &terp, qty)
+                } else if terp.is_empty() {
                     (400, json!({"ok": false, "error": "terp required"}))
                 } else if action == "refund" {
                     let mut g = fed.lock().unwrap();
@@ -2301,9 +2424,17 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                         json!({"ok": false, "error": "action is mint-to, refund or resolve"}),
                     )
                 };
-                if !terp.is_empty() && matches!(action.as_str(), "refund" | "resolve" | "mint-to") {
+                if (!terp.is_empty() || unmatched_row.is_some())
+                    && matches!(action.as_str(), "refund" | "resolve" | "mint-to")
+                {
+                    let log_terp = if terp.is_empty() {
+                        format!("unmatched #{}", id.unwrap_or(0))
+                    } else {
+                        terp.clone()
+                    };
                     admin_log(json!({
-                        "at": now_secs(), "admin": who, "action": action, "terp": terp, "id": id,
+                        "at": now_secs(), "admin": who, "action": action, "terp": log_terp, "id": id,
+                        "unmatched_zec_txid": unmatched_row.as_ref().map(|r| r.txid.clone()),
                         "comp": comp, "note": note, "ok": out.get("ok").cloned().unwrap_or(json!(false)),
                         "phase": out.get("phase").cloned(), "tx": out.get("tx").cloned(),
                         "error": out.get("error").cloned(),

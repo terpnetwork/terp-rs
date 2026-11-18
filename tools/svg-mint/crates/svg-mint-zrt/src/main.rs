@@ -373,6 +373,166 @@ fn compact_from_verbose(action: &serde_json::Value) -> Option<zync_core::client:
     })
 }
 
+/// One full Ironwood output (580-byte ciphertext). Compact actions carry no memo.
+struct FullIronwoodOutput {
+    epk: [u8; 32],
+    cmx: [u8; 32],
+    enc: [u8; zcash_note_encryption::ENC_CIPHERTEXT_SIZE],
+}
+
+impl zcash_note_encryption::ShieldedOutput<orchard::note_encryption::IronwoodDomain, { zcash_note_encryption::ENC_CIPHERTEXT_SIZE }>
+    for FullIronwoodOutput
+{
+    fn ephemeral_key(&self) -> zcash_note_encryption::EphemeralKeyBytes {
+        zcash_note_encryption::EphemeralKeyBytes(self.epk)
+    }
+    fn cmstar_bytes(&self) -> [u8; 32] {
+        self.cmx
+    }
+    fn enc_ciphertext(&self) -> &[u8; zcash_note_encryption::ENC_CIPHERTEXT_SIZE] {
+        &self.enc
+    }
+}
+
+/// ZIP-302 memo as text: zero padding dropped, `0xF6` = no memo, non-text memos as hex.
+fn memo_text(memo: &[u8]) -> String {
+    let end = memo.iter().rposition(|b| *b != 0).map(|i| i + 1).unwrap_or(0);
+    let body = &memo[..end];
+    if body.is_empty() || body[0] == 0xF6 {
+        return String::new();
+    }
+    if body[0] <= 0xF4 {
+        if let Ok(s) = std::str::from_utf8(body) {
+            return s.to_string();
+        }
+    }
+    hex::encode(body)
+}
+
+/// Full trial decryption of one verbose action, in the RPC byte order or reversed.
+fn decrypt_full_action(
+    ivk: &orchard::keys::PreparedIncomingViewingKey,
+    action: &serde_json::Value,
+) -> Option<(String, String)> {
+    let c = compact_from_verbose(action)?;
+    let enc = hex::decode(action.get("encCiphertext")?.as_str()?).ok()?;
+    if enc.len() != zcash_note_encryption::ENC_CIPHERTEXT_SIZE {
+        return None;
+    }
+    let mut full = [0u8; zcash_note_encryption::ENC_CIPHERTEXT_SIZE];
+    full.copy_from_slice(&enc);
+    for rev in [false, true] {
+        let flip = |b: [u8; 32]| {
+            let mut x = b;
+            if rev {
+                x.reverse();
+            }
+            x
+        };
+        let (nf_b, cmx_b, epk_b) = (flip(c.nullifier), flip(c.cmx), flip(c.ephemeral_key));
+        let Some(nf) = Option::from(orchard::note::Nullifier::from_bytes(&nf_b)) else { continue };
+        let Some(cmx) = Option::<orchard::note::ExtractedNoteCommitment>::from(orchard::note::ExtractedNoteCommitment::from_bytes(&cmx_b)) else { continue };
+        let Ok(compact_ct) = <[u8; 52]>::try_from(&full[..52]) else { continue };
+        let compact = orchard::note_encryption::CompactAction::from_parts(
+            nf,
+            cmx,
+            zcash_note_encryption::EphemeralKeyBytes(epk_b),
+            compact_ct,
+        );
+        let domain = orchard::note_encryption::IronwoodDomain::for_compact_action(&compact);
+        let out = FullIronwoodOutput { epk: epk_b, cmx: cmx_b, enc: full };
+        let Some((note, addr, memo)) = zcash_note_encryption::try_note_decryption(&domain, ivk, &out) else {
+            continue;
+        };
+        if orchard::note::ExtractedNoteCommitment::from(note.commitment()).to_bytes() != cmx_b {
+            continue;
+        }
+        return Some((hex::encode(addr.to_raw_address_bytes()), memo_text(&memo)));
+    }
+    None
+}
+
+/// (memo of the house output, block time, height). Outer None = tx not readable yet.
+/// Inner None = tx read but no house output decrypted.
+fn read_full_memo(
+    ivk: &orchard::keys::PreparedIncomingViewingKey,
+    txid: &str,
+    receiver: &str,
+) -> Option<(Option<String>, u64, u64)> {
+    let mut found = None;
+    for id in [Some(txid.to_string()), txid_reversed(txid)].into_iter().flatten() {
+        if let Ok(v) = house_rpc("getrawtransaction", &serde_json::json!([id, 1])) {
+            if v.get("result").is_some_and(|r| r.is_object()) {
+                found = Some(v);
+                break;
+            }
+        }
+    }
+    let tx = found?;
+    let r = tx.get("result")?;
+    let height = r.get("height").and_then(|h| h.as_u64()).unwrap_or(0);
+    let time = r
+        .get("blocktime")
+        .and_then(|t| t.as_u64())
+        .or_else(|| if height > 0 { r.get("time").and_then(|t| t.as_u64()) } else { None })
+        .unwrap_or(0);
+    let actions = r
+        .pointer("/ironwood/actions")
+        .and_then(|a| a.as_array())
+        .cloned()
+        .unwrap_or_default();
+    for a in &actions {
+        if let Some((rec, memo)) = decrypt_full_action(ivk, a) {
+            if receiver.is_empty() || rec == receiver {
+                return Some((Some(memo), time, height));
+            }
+        }
+    }
+    Some((None, time, height))
+}
+
+/// Read the real memo (and block time) of each house note from the full tx.
+/// The desk binds a payment to a checkout by this memo only.
+fn fill_note_memos(fvk: &OrchardFvk, notes: &mut Vec<serde_json::Value>) {
+    let ivk = orchard::keys::PreparedIncomingViewingKey::new(&fvk.to_ivk(orchard::keys::Scope::External));
+    let (mut read, mut decrypted, mut missed) = (0u32, 0u32, 0u32);
+    for note in notes.iter_mut() {
+        let mined = note.get("mined").and_then(|m| m.as_bool()).unwrap_or(true);
+        let checked = note.get("memo_checked").and_then(|m| m.as_bool()).unwrap_or(false);
+        let timed = note.get("time").and_then(|t| t.as_u64()).unwrap_or(0) > 0;
+        if checked && (timed || !mined) {
+            continue;
+        }
+        let Some(txid) = note.get("txid").and_then(|t| t.as_str()).map(|s| s.to_string()) else { continue };
+        if txid.len() != 64 || !txid.chars().all(|c| c.is_ascii_hexdigit()) {
+            continue;
+        }
+        if read >= 16 {
+            break;
+        }
+        read += 1;
+        let receiver = note.get("receiver").and_then(|r| r.as_str()).unwrap_or("").to_string();
+        let Some((memo, time, height)) = read_full_memo(&ivk, &txid, &receiver) else { continue };
+        if time > 0 {
+            note["time"] = serde_json::json!(time);
+        }
+        if height > 0 {
+            note["height"] = serde_json::json!(height);
+        }
+        match memo {
+            Some(m) => {
+                note["memo"] = serde_json::json!(m);
+                note["memo_checked"] = serde_json::json!(true);
+                decrypted += 1;
+            }
+            None => missed += 1,
+        }
+    }
+    if read > 0 {
+        eprintln!("note memos: read {read} decrypted {decrypted} no-house-output {missed}");
+    }
+}
+
 /// Verbose house mempool txs. Compact `GetMempoolTx` often omits Ironwood actions.
 /// Trial-decrypt only. Orchard actions are ignored.
 fn merge_house_rpc_mempool(scanner: &Scanner, notes: &mut Vec<serde_json::Value>) {
@@ -564,6 +724,7 @@ async fn sync_compact() -> Result<(), String> {
     }
     merge_house_rpc_mempool(&scanner, notes);
     confirm_mined_notes(notes);
+    fill_note_memos(&fvk, notes);
     write_notes(&doc)?;
     // Same scanner, same server, same keys: keep the house wallet state current.
     match wallet::sync(&mut client, &url, &fvk, tip).await {
@@ -858,6 +1019,21 @@ mod tests {
         assert_eq!(notes.len(), 1);
         assert_eq!(notes[0]["mined"], serde_json::json!(true));
         assert_eq!(notes[0]["txid"], serde_json::json!(display));
+    }
+
+    #[test]
+    fn memo_text_reads_zip302() {
+        let mut m = [0u8; 512];
+        m[..6].copy_from_slice(b"6431ab");
+        assert_eq!(memo_text(&m), "6431ab");
+        let mut none = [0u8; 512];
+        none[0] = 0xF6;
+        assert_eq!(memo_text(&none), "");
+        assert_eq!(memo_text(&[0u8; 512]), "");
+        let mut bin = [0u8; 512];
+        bin[0] = 0xFF;
+        bin[1] = 0x01;
+        assert_eq!(memo_text(&bin), "ff01");
     }
 
     #[test]
