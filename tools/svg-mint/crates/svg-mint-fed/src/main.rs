@@ -1259,6 +1259,12 @@ fn ingest_observed(
     };
     let n = dregg::commit::nullifier(&opening);
     let mut f = fed.lock().unwrap();
+    // One ZEC payment can be observed under both txid byte orders; credit it once.
+    if let Some(alias) = dregg::commit::zec_txid_alias_nullifier(rail, amount, &opening.witness.raw) {
+        if f.cell.phase(&alias).is_some() {
+            return Ok(());
+        }
+    }
     if !checkout_now(&f).checkout_ready {
         return Ok(());
     }
