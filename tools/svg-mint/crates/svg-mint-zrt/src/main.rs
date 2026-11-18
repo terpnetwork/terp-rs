@@ -223,6 +223,19 @@ fn scan_budget() -> u64 {
         .unwrap_or(2_000)
 }
 
+/// Hex txid with its 32 bytes reversed (RPC display order <-> compact-block internal order).
+fn txid_reversed(txid: &str) -> Option<String> {
+    let mut b = hex::decode(txid).ok().filter(|b| b.len() == 32)?;
+    b.reverse();
+    Some(hex::encode(b))
+}
+
+/// Same transaction: equal txids, or one is the other in reversed byte order. The house RPC
+/// mempool path reports display order; compact blocks report internal order.
+fn same_txid(a: &str, b: &str) -> bool {
+    a == b || txid_reversed(a).as_deref() == Some(b)
+}
+
 fn push_ironwood_note(
     notes: &mut Vec<serde_json::Value>,
     txid: &str,
@@ -232,7 +245,7 @@ fn push_ironwood_note(
 ) {
     // One tx can carry change and the checkout output. Keep each receiver.
     if let Some(existing) = notes.iter_mut().find(|n| {
-        let same = n.get("txid").and_then(|t| t.as_str()) == Some(txid);
+        let same = n.get("txid").and_then(|t| t.as_str()).is_some_and(|t| same_txid(t, txid));
         let rec = n.get("receiver").and_then(|t| t.as_str()).unwrap_or("");
         same && (rec == receiver || rec.is_empty() || receiver.is_empty())
     }) {
@@ -832,6 +845,20 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn one_tx_in_both_byte_orders_is_one_note() {
+        let display = "205bd50f739b5bbf04df4ff08ad8c78fa18a41dd217b792fee1d2e6c0fb66619";
+        let internal = "1966b60f6c2e1dee2f797b21dd418aa18fc7d88af04fdf04bf5b9b730fd55b20";
+        assert!(same_txid(display, internal) && same_txid(internal, display) && same_txid(display, display));
+        assert!(!same_txid(display, "00"));
+        let mut notes = Vec::new();
+        push_ironwood_note(&mut notes, display, "aa", 200_000, false);
+        push_ironwood_note(&mut notes, internal, "aa", 200_000, true);
+        assert_eq!(notes.len(), 1);
+        assert_eq!(notes[0]["mined"], serde_json::json!(true));
+        assert_eq!(notes[0]["txid"], serde_json::json!(display));
+    }
 
     #[test]
     fn compact_host_is_loopback_only() {
