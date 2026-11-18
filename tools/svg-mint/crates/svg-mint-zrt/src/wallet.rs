@@ -18,7 +18,6 @@ use zync_core::{LightwalletdClient, OrchardFvk, ScanAction, Scanner, Scope};
 /// Wallet keys were created 2026-10-30 ~19:08 UTC (≈ height 3,537,770). Birthday a bit before.
 pub const DEFAULT_BIRTHDAY: u64 = 3_537_000;
 pub const ANCHOR_OFFSET: u64 = 3;
-const NU6_3_BRANCH_ID: u32 = 0x37a5_165b;
 const ZIP317_MARGINAL: u64 = 5_000;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -308,7 +307,7 @@ pub async fn send(client: &mut LightwalletdClient, url: &str, fvk: &OrchardFvk, 
         fee,
         anchor,
         (tip + 1) as u32,
-        NU6_3_BRANCH_ID,
+        branch_id_for(tip + 1),
         zcash_protocol::memo::MemoBytes::empty(),
     )?;
     let tx_hex = hex::encode(&tx);
@@ -323,6 +322,8 @@ pub async fn send(client: &mut LightwalletdClient, url: &str, fvk: &OrchardFvk, 
         "change_zat": sum - amount - fee,
         "anchor_height": anchor_h,
         "target_height": tip + 1,
+        "consensus_branch_id": format!("{:08x}", branch_id_for(tip + 1)),
+        "tx_header_branch_id": tx.get(8..12).map(|b| format!("{:08x}", u32::from_le_bytes([b[0], b[1], b[2], b[3]]))),
         "tx_bytes": tx.len(),
         "txid": txid,
     });
@@ -359,4 +360,25 @@ pub async fn check_anchor(client: &mut LightwalletdClient, url: &str) -> Result<
     }
     let want = zafu_wasm::witness::compute_tree_root(&hex::decode(tree_state_hex(url, anchor_h).await?).map_err(|e| e.to_string())?)?;
     Ok(json!({"anchor_height": anchor_h, "cmx_replayed": n, "root_match": replay.anchor().to_bytes() == want}))
+}
+
+/// Consensus branch id for the block a send targets, from the zakura-protocol
+/// Mainnet schedule (NU7 = 0x77190ad9 from height 3,543,405). It was a fixed
+/// NU6.3 constant, which the node rejects once NU7 is active.
+pub fn branch_id_for(height: u64) -> u32 {
+    use zcash_protocol::consensus::{BlockHeight, BranchId, MainNetwork};
+    u32::from(BranchId::for_height(&MainNetwork, BlockHeight::from_u32(height as u32)))
+}
+
+#[cfg(test)]
+mod branch_tests {
+    use super::branch_id_for;
+
+    #[test]
+    fn sends_bind_nu7_after_its_mainnet_activation() {
+        // lightwalletd on groot2 and zec.rocks report 77190ad9 at 3,585,525 (2026-11-18).
+        assert_eq!(branch_id_for(3_585_526), 0x7719_0ad9);
+        assert_eq!(branch_id_for(3_543_405), 0x7719_0ad9);
+        assert_eq!(branch_id_for(3_543_404), 0x37a5_165b);
+    }
 }

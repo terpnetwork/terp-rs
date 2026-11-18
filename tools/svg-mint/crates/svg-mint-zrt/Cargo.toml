@@ -8,7 +8,9 @@ description = "Product ZEC wallet CLI for the SVG mint desk. Compact server requ
 
 # Standalone: excluded from the terp-rs root workspace. The deployed wallet stack
 # (zakura-orchard =1.0.0, tonic 0.11, zcli zync-core / zcash-wasm) does not fit the
-# root workspace pins yet. zcli lives at terp-core/crates/zcli.
+# root workspace pins yet. zcli lives at terp-core/crates/zcli and must be zcli v0.11.0
+# (zakura 4.0.0, NU7) plus the ironwood zync-core additions; groot2 builds against
+# ~/src/zcli-v0.11.0 branch svg-mint-zrt-v0.11.0.
 [workspace]
 
 [[bin]]
@@ -18,13 +20,13 @@ path = "src/main.rs"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 tonic = "0.11"
-orchard = { package = "zakura-orchard", version = "=1.0.0", default-features = false, features = ["circuit"] }
+orchard = { package = "zakura-orchard", version = "=4.0.0", default-features = false, features = ["backend-halo2", "circuit"] }
 zafu-wasm = { path = "../../../../../zcli/crates/zcash-wasm", default-features = false }
 serde_json = "1"
 hex = "0.4"
 tokio = { version = "1", features = ["rt", "net", "time", "io-util", "sync"] }
 zync-core = { path = "../../../../../zcli/crates/zync-core", default-features = false, features = ["client"] }
-zcash_address = { version = "0.13", default-features = false }
-zcash_protocol = { version = "0.10.6", default-features = false }
+zcash_address = { package = "zakura-address", version = "=4.0.0", default-features = false }
+zcash_protocol = { package = "zakura-protocol", version = "=4.0.0", default-features = false }
 rusqlite = { version = "0.31", features = ["bundled"] }
 dregg = { path = "../dregg" }
