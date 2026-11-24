@@ -130,7 +130,7 @@ privval = ["frost", "noise", "dep:prost", "dep:prost-types"]
 # Public-leaf XOR PIR over community notes.json (merkle path + blob).
 # Build: cargo build -p hash-market --features pir
 # Leaves NIP-BUD/blossom and Nostr in place. Does not broadcast.
-sezs = ["server", "onboard"]
+sezs = ["server", "onboard", "pallas"]
 pir = ["server", "dep:ff", "dep:zakura-pasta-curves", "dep:zakura-halo2-gadgets"]
 
 # Host-only. `cargo check --target wasm32-unknown-unknown` compiles an empty
@@ -145,7 +145,7 @@ bech32 = { workspace = true }
 blake3 = { workspace = true }
 clap = { workspace = true, features = ["derive"], optional = true }
 cosmwasm-std = { workspace = true }
-cw721-nips = { workspace = true }
+cw721-nips = { path = "../../crates/nips", default-features = false }
 ed25519-dalek = { workspace = true, features = ["rand_core"], optional = true }
 ff = { workspace = true, optional = true }
 frost-ed25519 = { workspace = true, features = ["std", "serialization"], optional = true }
