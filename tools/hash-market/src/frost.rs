@@ -3,7 +3,7 @@
 //! Session cookie routes live here too — Next export cannot Set-Cookie.
 
 use crate::onboard_authz::frost_http::SharedInbox;
-use crate::onboard_authz::itl_session;
+use crate::onboard_authz::sezs_session;
 use axum::{
     Router,
     extract::{Request, State},
@@ -13,45 +13,49 @@ use axum::{
 };
 use serde_json::json;
 
+pub fn product_routes(inbox: SharedInbox) -> Router {
+    Router::new()
+        .route("/frost/jobs", post(dispatch))
+        .route("/frost/jobs/:id", get(dispatch))
+        .route("/frost/jobs/:id/share", post(dispatch))
+        .route("/frost/jobs/:id/broadcast", post(dispatch))
+        .route("/door/consume", post(door_dispatch))
+        .route("/door/ushers", post(door_dispatch))
+        .route("/door/paid", post(door_dispatch))
+        .route(
+            "/session/challenge",
+            post(session_dispatch).options(session_dispatch),
+        )
+        .route(
+            "/session/verify",
+            post(session_dispatch).options(session_dispatch),
+        )
+        .route(
+            "/session/me",
+            get(session_dispatch).options(session_dispatch),
+        )
+        .route(
+            "/session/logout",
+            post(session_dispatch).options(session_dispatch),
+        )
+        .route(
+            "/session/health",
+            get(session_dispatch).options(session_dispatch),
+        )
+        .route("/session", get(session_dispatch).options(session_dispatch))
+        .with_state(inbox)
+}
+
+/// Inbox, door, and session routes at `/sezs/*`, with `/itl/*` as an alias.
 pub fn router(inbox: SharedInbox) -> Router {
     Router::new()
-        .route("/itl/frost/jobs", post(dispatch))
-        .route("/itl/frost/jobs/:id", get(dispatch))
-        .route("/itl/frost/jobs/:id/share", post(dispatch))
-        .route("/itl/frost/jobs/:id/broadcast", post(dispatch))
-        .route("/itl/door/consume", post(door_dispatch))
-        .route("/itl/door/ushers", post(door_dispatch))
-        .route("/itl/door/paid", post(door_dispatch))
-        .route(
-            "/itl/session/challenge",
-            post(session_dispatch).options(session_dispatch),
-        )
-        .route(
-            "/itl/session/verify",
-            post(session_dispatch).options(session_dispatch),
-        )
-        .route(
-            "/itl/session/me",
-            get(session_dispatch).options(session_dispatch),
-        )
-        .route(
-            "/itl/session/logout",
-            post(session_dispatch).options(session_dispatch),
-        )
-        .route(
-            "/itl/session/health",
-            get(session_dispatch).options(session_dispatch),
-        )
-        .route(
-            "/itl/session",
-            get(session_dispatch).options(session_dispatch),
-        )
-        .with_state(inbox)
+        .nest("/sezs", product_routes(inbox.clone()))
+        .nest("/itl", product_routes(inbox))
 }
 
 async fn session_dispatch(req: Request) -> Response {
     let method = req.method().as_str().to_string();
-    let path = req.uri().path().to_string();
+    let path = crate::sezs::canonical_path(req.uri().path());
     let origin = req
         .headers()
         .get(header::ORIGIN)
@@ -67,7 +71,7 @@ async fn session_dispatch(req: Request) -> Response {
         .unwrap_or_default();
     let body = String::from_utf8_lossy(&bytes).into_owned();
     let Some(r) =
-        itl_session::try_handle(&method, &path, &body, origin.as_deref(), cookie.as_deref())
+        sezs_session::try_handle(&method, &path, &body, origin.as_deref(), cookie.as_deref())
     else {
         return (
             StatusCode::NOT_FOUND,
@@ -82,7 +86,7 @@ async fn session_dispatch(req: Request) -> Response {
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::CACHE_CONTROL, "no-store");
     if let Some(o) = origin.as_deref()
-        && itl_session::origin_allowed(o)
+        && sezs_session::origin_allowed(o)
     {
         builder = builder
             .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, o)
@@ -114,7 +118,7 @@ async fn door_dispatch(req: Request) -> Response {
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
     let method = req.method().as_str().to_string();
-    let path = req.uri().path().to_string();
+    let path = crate::sezs::canonical_path(req.uri().path());
     if let Some(r) = crate::onboard_authz::frost_http::authorize(&path, cookie.as_deref()) {
         return json_resp(r.status, r.body);
     }
@@ -122,7 +126,7 @@ async fn door_dispatch(req: Request) -> Response {
         .await
         .unwrap_or_default();
     let body = String::from_utf8_lossy(&bytes).into_owned();
-    match crate::onboard_authz::itl_door::try_handle(&method, &path, &body, cookie.as_deref()) {
+    match crate::onboard_authz::sezs_door::try_handle(&method, &path, &body, cookie.as_deref()) {
         Some(r) => json_resp(r.status, r.body),
         None => json_resp(404, json!({"ok": false, "error": "not found"}).to_string()),
     }
@@ -135,7 +139,7 @@ async fn dispatch(State(inbox): State<SharedInbox>, req: Request) -> Response {
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
     let method = req.method().as_str().to_string();
-    let path = req.uri().path().to_string();
+    let path = crate::sezs::canonical_path(req.uri().path());
     if let Some(r) = crate::onboard_authz::frost_http::authorize(&path, cookie.as_deref()) {
         return json_resp(r.status, r.body);
     }
@@ -173,7 +177,7 @@ async fn dispatch(State(inbox): State<SharedInbox>, req: Request) -> Response {
 mod tests {
     use super::*;
     use crate::onboard_authz::frost_http::FrostInbox;
-    use crate::onboard_authz::itl_session::mint_test_cookie;
+    use crate::onboard_authz::sezs_session::mint_test_cookie;
     use tower::ServiceExt;
 
     fn inbox() -> SharedInbox {
@@ -193,11 +197,11 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("POST")
-                    .uri("/itl/frost/jobs")
+                    .uri("/sezs/frost/jobs")
                     .header("content-type", "application/json")
                     .header("cookie", &cookie)
                     .body(axum::body::Body::from({
-                        let rc = crate::onboard_authz::itl_frost::roster_commit(
+                        let rc = crate::onboard_authz::sezs_frost::roster_commit(
                             0,
                             2,
                             3,
@@ -222,7 +226,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("POST")
-                    .uri(format!("/itl/frost/jobs/{id}/share"))
+                    .uri(format!("/sezs/frost/jobs/{id}/share"))
                     .header("content-type", "application/json")
                     .header("cookie", &cookie)
                     .body(axum::body::Body::from(
@@ -239,7 +243,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("POST")
-                    .uri(format!("/itl/frost/jobs/{id}/share"))
+                    .uri(format!("/sezs/frost/jobs/{id}/share"))
                     .header("content-type", "application/json")
                     .header("cookie", &cookie)
                     .body(axum::body::Body::from(
@@ -255,7 +259,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("POST")
-                    .uri(format!("/itl/frost/jobs/{id}/broadcast"))
+                    .uri(format!("/sezs/frost/jobs/{id}/broadcast"))
                     .header("content-type", "application/json")
                     .header("cookie", &cookie)
                     .body(axum::body::Body::from(r#"{"txid":"txid-20"}"#))
@@ -274,7 +278,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("POST")
-                    .uri("/itl/frost/jobs")
+                    .uri("/sezs/frost/jobs")
                     .header("content-type", "application/json")
                     .body(axum::body::Body::from(
                         r#"{"pay_code":"x","roster_commit":"ab"}"#,
@@ -289,7 +293,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("POST")
-                    .uri("/itl/frost/jobs")
+                    .uri("/sezs/frost/jobs")
                     .header("content-type", "application/json")
                     .header("cookie", usher)
                     .body(axum::body::Body::from(
@@ -309,7 +313,7 @@ mod tests {
             .oneshot(
                 axum::http::Request::builder()
                     .method("GET")
-                    .uri("/itl/session/me")
+                    .uri("/sezs/session/me")
                     .header("origin", "http://127.0.0.1:3051")
                     .body(axum::body::Body::empty())
                     .unwrap(),

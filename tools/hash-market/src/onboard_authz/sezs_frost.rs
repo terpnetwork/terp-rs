@@ -1,4 +1,4 @@
-//! ITL FROST 20/80 pay — in-process SoT for the product harness.
+//! SEZS FROST 20/80 pay — in-process SoT for the product harness.
 //! Artists/vendors: transparent t-addr (grant accountability). 20% upfront, 80% after event.
 //! Paid ticket inflow required before any 20% job. Inbox holds shares until t-of-n; then broadcast.
 //! No KeyPackages. Passkey is not a share. SIGN/C/S is frost-spend wire, not a stub txid.
@@ -512,7 +512,7 @@ pub fn local_twenty_eighty() -> Ledger {
 
 /// Sealed persist. Missing/short key => ceremony stranded.
 pub fn persist_required() -> Result<(), &'static str> {
-    match std::env::var("ITL_FROST_PERSIST_KEY") {
+    match std::env::var("SEZS_FROST_PERSIST_KEY") {
         Ok(k) if k.len() >= 16 => Ok(()),
         _ => Err("persistence_off"),
     }

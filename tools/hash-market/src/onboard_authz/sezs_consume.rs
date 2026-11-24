@@ -9,10 +9,10 @@
 //! On-chain verify is `deps.api.verify_halo2_proof` after `MsgStoreCodeWithCircuit`.
 //! Local tests prove/verify here. MockBech32 is not a success path.
 
-use super::itl_ingress::{ict_mock_refused, is_mock_bech32};
 use super::poseidon::{
     Fp as HostFp, MerklePath, PoseidonTree, TREE_DEPTH, door_nullifier, ticket_leaf,
 };
+use super::sezs_ingress::{ict_mock_refused, is_mock_bech32};
 use ff::{Field, PrimeField};
 use halo2_proofs::{
     circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value},
@@ -36,7 +36,7 @@ pub const K: u32 = 11;
 pub const INSTANCE_COUNT: usize = 3;
 pub const MSG_STORE_CODE_WITH_CIRCUIT: &str = "/cosmwasm.wasm.v1.MsgStoreCodeWithCircuit";
 pub const CONSUME_LOCAL_PROD_CMD: &str =
-    "cargo run --example itl_consume_e2e -p ict-rs-cw-orch --features docker";
+    "cargo run --example sezs_consume_e2e -p ict-rs-cw-orch --features docker";
 
 const T: usize = 3;
 const RF: usize = 8;

@@ -1,4 +1,4 @@
-//! Cash App zkEmail ingress — in-process SoT for the ITL harness.
+//! Cash App zkEmail ingress — in-process SoT for the SEZS harness.
 //! Same receipt JSON the Tickets plane fetches. Only mock is Payment received mail.
 //! Nullifier: sha256("cashapp-v1" || txId) hex. payRef binds checkout. Not zkTLS.
 //!

@@ -2,11 +2,11 @@
 // Stock terpd without the zk host must fail-closed on-chain; this binary
 // exercises the **product** circuit, not MockBech32.
 
-use hash_market::onboard_authz::itl_cashapp::{LIST_CENTS, SKU, synthetic_received_eml};
-use hash_market::onboard_authz::itl_consume::{
+use hash_market::onboard_authz::sezs_cashapp::{LIST_CENTS, SKU, synthetic_received_eml};
+use hash_market::onboard_authz::sezs_consume::{
     ConsumeEngine, PROVER_ID, VK_MAGIC, prove_issued, serialize_vk_with_footer, verify_halo2_proof,
 };
-use hash_market::onboard_authz::itl_ingress::{EVENT_ID, IngressEngine};
+use hash_market::onboard_authz::sezs_ingress::{EVENT_ID, IngressEngine};
 
 fn main() {
     let mut ing = IngressEngine::default();
@@ -24,13 +24,13 @@ fn main() {
     assert!(verify_halo2_proof(&proof, &inst).expect("verify"));
     let vk = serialize_vk_with_footer().expect("vk");
     assert_eq!(vk[vk.len() - 10], PROVER_ID);
-    let (_, _, pl, _) = hash_market::onboard_authz::itl_consume::parse_vk_footer(&vk).unwrap();
+    let (_, _, pl, _) = hash_market::onboard_authz::sezs_consume::parse_vk_footer(&vk).unwrap();
     assert_eq!(&vk[pl as usize..pl as usize + 4], VK_MAGIC);
 
     let mut door = ConsumeEngine::default();
     door.add_usher("terp1usher");
     door.set_guest_root(issued.guest_root);
-    let eid = hash_market::onboard_authz::itl_consume::fp_to_bytes(inst.event_id);
+    let eid = hash_market::onboard_authz::sezs_consume::fp_to_bytes(inst.event_id);
     assert_eq!(
         door.verify_consume("terp1guest", &proof, nf, eid),
         Err("not_usher")
@@ -41,5 +41,5 @@ fn main() {
         door.verify_consume("terp1usher", &proof, nf, eid),
         Err("nullifier_spent")
     );
-    println!("PASS itl-consume-verify halo2 pasta poseidon usher/replay/non-usher");
+    println!("PASS sezs-consume-verify halo2 pasta poseidon usher/replay/non-usher");
 }

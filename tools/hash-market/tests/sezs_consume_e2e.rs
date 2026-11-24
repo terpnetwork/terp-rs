@@ -1,18 +1,18 @@
 //! Consume plane — Halo2 Pasta Poseidon merkle+nullifier, usher-only door.
 //! Local: no Docker. Live: ict-rs Docker Terp + MsgStoreCodeWithCircuit, not MockBech32.
 //!
-//!   cargo test --manifest-path tools/onboard-authz/Cargo.toml --test itl_consume_e2e
+//!   cargo test --manifest-path tools/onboard-authz/Cargo.toml --test sezs_consume_e2e
 
-use hash_market::onboard_authz::itl_cashapp::{LIST_CENTS, SKU, synthetic_received_eml};
-use hash_market::onboard_authz::itl_consume::{
+use hash_market::onboard_authz::sezs_cashapp::{LIST_CENTS, SKU, synthetic_received_eml};
+use hash_market::onboard_authz::sezs_consume::{
     ConsumeEngine, MSG_STORE_CODE_WITH_CIRCUIT, PROVER_ID, consume_backend_mocked,
     consume_local_prod_cmd, consume_success_allowed, fp_to_bytes, msg_store_code_with_circuit,
     parse_vk_footer, prove_issued, serialize_vk_with_footer, verify_halo2_proof,
 };
-use hash_market::onboard_authz::itl_ingress::{EVENT_ID, IngressEngine, ict_mock_refused};
+use hash_market::onboard_authz::sezs_ingress::{EVENT_ID, IngressEngine, ict_mock_refused};
 
 #[test]
-fn itl_consume_usher_only_nullifiers_no_guest_listmembers() {
+fn sezs_consume_usher_only_nullifiers_no_guest_listmembers() {
     let mut door = ConsumeEngine::default();
     door.add_usher("terp1usher");
     assert!(door.is_usher("terp1usher"));
@@ -33,12 +33,12 @@ fn itl_consume_usher_only_nullifiers_no_guest_listmembers() {
 }
 
 #[test]
-fn itl_consume_msg_store_code_with_circuit_prover_id_0() {
+fn sezs_consume_msg_store_code_with_circuit_prover_id_0() {
     let msg = msg_store_code_with_circuit("terp1curator", b"\0asm", b"vk");
     assert_eq!(msg["@type"], MSG_STORE_CODE_WITH_CIRCUIT);
     assert_eq!(msg["prover_id"], 0);
     assert_ne!(msg["@type"], "/cosmwasm.wasm.v1.MsgStoreCode");
-    assert!(consume_local_prod_cmd().contains("itl_consume_e2e"));
+    assert!(consume_local_prod_cmd().contains("sezs_consume_e2e"));
     assert!(consume_local_prod_cmd().contains("ict-rs-cw-orch"));
     assert!(consume_local_prod_cmd().contains("docker"));
     assert!(ict_mock_refused(Some("1")));
@@ -47,7 +47,7 @@ fn itl_consume_msg_store_code_with_circuit_prover_id_0() {
 }
 
 #[test]
-fn itl_consume_paid_proof_usher_ok_replay_unpaid_nonusher() {
+fn sezs_consume_paid_proof_usher_ok_replay_unpaid_nonusher() {
     let mut ing = IngressEngine::default();
     let o = ing.create_cash_order("cred-guest");
     let eml = synthetic_received_eml(&o.pay_ref, LIST_CENTS, "D-CONSUME01");
@@ -94,7 +94,7 @@ fn itl_consume_paid_proof_usher_ok_replay_unpaid_nonusher() {
 }
 
 #[test]
-fn itl_consume_vk_footer_halo2_pasta() {
+fn sezs_consume_vk_footer_halo2_pasta() {
     let blob = serialize_vk_with_footer().expect("vk");
     let (pid, n, pl, vl) = parse_vk_footer(&blob).unwrap();
     assert_eq!(pid, PROVER_ID);
@@ -103,8 +103,8 @@ fn itl_consume_vk_footer_halo2_pasta() {
 }
 
 #[test]
-#[ignore = "needs ict-rs Docker Terp (itl_consume_e2e) — Daemon, not MockBech32"]
-fn itl_consume_docker_terp_store_code_with_circuit() {
+#[ignore = "needs ict-rs Docker Terp (sezs_consume_e2e) — Daemon, not MockBech32"]
+fn sezs_consume_docker_terp_store_code_with_circuit() {
     assert!(
         !ict_mock_refused(std::env::var("ICT_MOCK").ok().as_deref()),
         "ICT_MOCK=1 refused"
@@ -116,7 +116,7 @@ fn itl_consume_docker_terp_store_code_with_circuit() {
     );
     let cmd = consume_local_prod_cmd();
     assert!(cmd.contains("docker"));
-    assert!(cmd.contains("MsgStoreCodeWithCircuit") || cmd.contains("itl_consume_e2e"));
+    assert!(cmd.contains("MsgStoreCodeWithCircuit") || cmd.contains("sezs_consume_e2e"));
     let lcd = std::env::var("ICT_LCD").expect("ICT_LCD");
     assert!(!lcd.is_empty());
 }
@@ -124,7 +124,7 @@ fn itl_consume_docker_terp_store_code_with_circuit() {
 /// Product: Halo2 prove/verify + usher policy. Not a chain mock.
 /// Env: stock terpd without zk-wasmvm must fail-closed on-chain (see cw-ave zk.rs).
 #[test]
-fn itl_consume_vk_is_not_debug_pinned_params_roundtrip() {
+fn sezs_consume_vk_is_not_debug_pinned_params_roundtrip() {
     let blob = serialize_vk_with_footer().expect("vk");
     let s = String::from_utf8_lossy(&blob);
     assert!(

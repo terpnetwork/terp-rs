@@ -1,4 +1,4 @@
-//! ITL Speakeasy auth as a cw-orch / ict-rs product surface.
+//! SEZS Speakeasy auth as a cw-orch / ict-rs product surface.
 //!
 //! Local-first: in-process add → query → AnyOf → rotate (never empty).
 //! Live: LCD query + optional `terpd` broadcast (ignored tests).

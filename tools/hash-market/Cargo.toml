@@ -41,8 +41,8 @@ path = "src/bin/frost-inbox.rs"
 required-features = ["onboard"]
 
 [[bin]]
-name = "itl-consume-verify"
-path = "src/bin/itl-consume-verify.rs"
+name = "sezs-consume-verify"
+path = "src/bin/sezs-consume-verify.rs"
 required-features = ["onboard"]
 
 [[bin]]
@@ -130,6 +130,7 @@ privval = ["frost", "noise", "dep:prost", "dep:prost-types"]
 # Public-leaf XOR PIR over community notes.json (merkle path + blob).
 # Build: cargo build -p hash-market --features pir
 # Leaves NIP-BUD/blossom and Nostr in place. Does not broadcast.
+sezs = ["server", "onboard"]
 pir = ["server", "dep:ff", "dep:zakura-pasta-curves", "dep:zakura-halo2-gadgets"]
 
 # Host-only. `cargo check --target wasm32-unknown-unknown` compiles an empty

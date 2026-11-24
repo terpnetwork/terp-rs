@@ -1,9 +1,9 @@
 //! HashMerchant-embeddable FROST inbox HTTP.
 //! Hold shares until t-of-n, then broadcast adapter (string txid until ICT_SPAWN).
-//! Bind 127.0.0.1 only. Jobs seal to disk when `ITL_FROST_PERSIST_KEY` is >=16 chars.
+//! Bind 127.0.0.1 only. Jobs seal to disk when `SEZS_FROST_PERSIST_KEY` is >=16 chars.
 
 use super::http::HttpResponse;
-use super::itl_frost::{
+use super::sezs_frost::{
     BroadcastTarget, FROST_N, FROST_T, FrostScheme, PendingJob, persist_required,
 };
 use serde::Deserialize;
@@ -83,12 +83,12 @@ fn err_status(status: u16, e: &str) -> HttpResponse {
 /// Missing cookie is 401. An usher calling a FROST job is 403.
 pub fn authorize(path: &str, cookie: Option<&str>) -> Option<HttpResponse> {
     let path = path.split('?').next().unwrap_or(path);
-    let frost = path.starts_with("/itl/frost/");
-    let door = path.starts_with("/itl/door/");
+    let frost = path.starts_with("/sezs/frost/");
+    let door = path.starts_with("/sezs/door/");
     if !frost && !door {
         return None;
     }
-    let role = super::itl_session::session_from_cookie(cookie).map(|s| s.role);
+    let role = super::sezs_session::session_from_cookie(cookie).map(|s| s.role);
     if frost {
         return match role.as_deref() {
             Some("admin") => None,
@@ -97,7 +97,7 @@ pub fn authorize(path: &str, cookie: Option<&str>) -> Option<HttpResponse> {
             None => Some(err_status(401, "unauthenticated")),
         };
     }
-    if path == "/itl/door/consume" {
+    if path == "/sezs/door/consume" {
         return match role.as_deref() {
             Some("usher") => None,
             Some(_) => Some(err_status(403, "not_usher")),
@@ -191,10 +191,10 @@ fn fresh_nonce(seq: u64) -> [u8; 16] {
     n
 }
 
-/// HASHMERCHANT_BIND / ITL_FROST_BIND, else 127.0.0.1:19091. Non-loopback is rejected.
+/// HASHMERCHANT_BIND / SEZS_FROST_BIND, else 127.0.0.1:19091. Non-loopback is rejected.
 pub fn loopback_bind() -> Result<String, &'static str> {
     let raw = std::env::var("HASHMERCHANT_BIND")
-        .or_else(|_| std::env::var("ITL_FROST_BIND"))
+        .or_else(|_| std::env::var("SEZS_FROST_BIND").or_else(|_| std::env::var("ITL_FROST_BIND")))
         .unwrap_or_else(|_| BIND_DEFAULT.into());
     let bind = if raw.starts_with("127.0.0.1:") {
         raw
@@ -224,8 +224,11 @@ impl FrostInbox {
         match persist_required() {
             Err(_) => Ok(Self::default()),
             Ok(()) => {
-                let key = std::env::var("ITL_FROST_PERSIST_KEY").map_err(|_| "persistence_off")?;
-                let dir = std::env::var("ITL_FROST_PERSIST_DIR")
+                let key = std::env::var("SEZS_FROST_PERSIST_KEY")
+                    .or_else(|_| std::env::var("ITL_FROST_PERSIST_KEY"))
+                    .map_err(|_| "persistence_off")?;
+                let dir = std::env::var("SEZS_FROST_PERSIST_DIR")
+                    .or_else(|_| std::env::var("ITL_FROST_PERSIST_DIR"))
                     .unwrap_or_else(|_| "data/itl-frost".into());
                 Self::with_persist(&key, Path::new(&dir))
             }
@@ -327,26 +330,29 @@ impl FrostInbox {
     }
 
     pub fn try_handle(&mut self, method: &str, path: &str, body: &str) -> Option<HttpResponse> {
+        let path = crate::sezs::canonical_path(path);
+        let path = path.as_str();
         let path = path.split('?').next().unwrap_or(path);
-        if method == "POST" && path == "/itl/frost/jobs" {
+        if method == "POST" && path == "/sezs/frost/jobs" {
             return Some(self.create_job(body));
         }
-        if method == "GET" && path.starts_with("/itl/frost/jobs/") {
-            let id = path.trim_start_matches("/itl/frost/jobs/");
+        if method == "GET" && path.starts_with("/sezs/frost/jobs/") {
+            let id = path.trim_start_matches("/sezs/frost/jobs/");
             if id.is_empty() || id.contains('/') {
                 return None;
             }
             return Some(self.get_job(id));
         }
-        if method == "POST" && path.contains("/share") && path.starts_with("/itl/frost/jobs/") {
+        if method == "POST" && path.contains("/share") && path.starts_with("/sezs/frost/jobs/") {
             let id = path
-                .trim_start_matches("/itl/frost/jobs/")
+                .trim_start_matches("/sezs/frost/jobs/")
                 .trim_end_matches("/share");
             return Some(self.share(id, body));
         }
-        if method == "POST" && path.contains("/broadcast") && path.starts_with("/itl/frost/jobs/") {
+        if method == "POST" && path.contains("/broadcast") && path.starts_with("/sezs/frost/jobs/")
+        {
             let id = path
-                .trim_start_matches("/itl/frost/jobs/")
+                .trim_start_matches("/sezs/frost/jobs/")
                 .trim_end_matches("/broadcast");
             return Some(self.broadcast(id, body));
         }
@@ -506,10 +512,10 @@ fn handle_conn(mut s: TcpStream, inbox: &SharedInbox) {
         .nth(1)
         .unwrap_or("")
         .trim_end_matches('\0');
-    let origin = super::itl_session::header_line(&req, "origin");
-    let cookie = super::itl_session::header_line(&req, "cookie");
+    let origin = super::sezs_session::header_line(&req, "origin");
+    let cookie = super::sezs_session::header_line(&req, "cookie");
     if let Some(r) =
-        super::itl_session::try_handle(method, path, body, origin.as_deref(), cookie.as_deref())
+        super::sezs_session::try_handle(method, path, body, origin.as_deref(), cookie.as_deref())
     {
         let _ = r.write_to(&mut s, origin.as_deref());
         return;
@@ -518,8 +524,8 @@ fn handle_conn(mut s: TcpStream, inbox: &SharedInbox) {
         let _ = r.write_to(&mut s);
         return;
     }
-    if path.starts_with("/itl/door")
-        && let Some(r) = super::itl_door::try_handle(method, path, body, cookie.as_deref())
+    if path.starts_with("/sezs/door")
+        && let Some(r) = super::sezs_door::try_handle(method, path, body, cookie.as_deref())
     {
         let _ = r.write_to(&mut s);
         return;
@@ -528,7 +534,7 @@ fn handle_conn(mut s: TcpStream, inbox: &SharedInbox) {
         Ok(mut g) => {
             if let Some(r) = g.try_handle(method, path, body) {
                 r
-            } else if let Some(r) = super::itl_pay::try_handle(method, path, body) {
+            } else if let Some(r) = super::sezs_pay::try_handle(method, path, body) {
                 r
             } else {
                 err_status(404, "not found")
@@ -549,7 +555,9 @@ pub fn serve(bind: &str, inbox: SharedInbox) -> std::io::Result<()> {
     }
     let listener = TcpListener::bind(bind)?;
     listener.set_nonblocking(false)?;
-    eprintln!("frost-inbox → http://{bind}  POST /itl/frost/jobs  POST /itl/session/* (loopback)");
+    eprintln!(
+        "frost-inbox → http://{bind}  POST /sezs/frost/jobs  POST /sezs/session/* (loopback)"
+    );
     for stream in listener.incoming() {
         let s = match stream {
             Ok(s) => s,
@@ -568,14 +576,14 @@ mod tests {
     #[test]
     fn loopback_bind_is_127() {
         unsafe { std::env::remove_var("HASHMERCHANT_BIND") };
-        unsafe { std::env::remove_var("ITL_FROST_BIND") };
+        unsafe { std::env::remove_var("SEZS_FROST_BIND") };
         let b = loopback_bind().unwrap();
         assert!(b.starts_with("127.0.0.1:"), "{b}");
         unsafe { std::env::set_var("HASHMERCHANT_BIND", "0.0.0.0:19091") };
         assert_eq!(loopback_bind(), Err("frost_bind_not_loopback"));
         unsafe { std::env::remove_var("HASHMERCHANT_BIND") };
-        unsafe { std::env::set_var("ITL_FROST_BIND", "127.0.0.1:19111") };
+        unsafe { std::env::set_var("SEZS_FROST_BIND", "127.0.0.1:19111") };
         assert_eq!(loopback_bind().unwrap(), "127.0.0.1:19111");
-        unsafe { std::env::remove_var("ITL_FROST_BIND") };
+        unsafe { std::env::remove_var("SEZS_FROST_BIND") };
     }
 }

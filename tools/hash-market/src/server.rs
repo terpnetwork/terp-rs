@@ -84,6 +84,9 @@ pub struct AppState {
     /// Embedded onboard feegrant (None = do not nest `/onboard`).
     #[cfg(feature = "onboard")]
     pub onboard: Option<Arc<crate::onboard_authz::OnboardRuntime>>,
+    /// SEZS product service (None = do not nest `/sezs`).
+    #[cfg(feature = "sezs")]
+    pub sezs: Option<Arc<dyn crate::sezs::SezsService>>,
     /// Sole terp1 allowed to write `/trees`. Reads stay public.
     pub tree_operator: String,
 }
@@ -173,6 +176,8 @@ impl AppState {
             trusted_builder: RwLock::new(HashMap::new()),
             #[cfg(feature = "onboard")]
             onboard: None,
+            #[cfg(feature = "sezs")]
+            sezs: None,
             tree_operator: crate::config::DEFAULT_TREE_OPERATOR.into(),
         })
     }
@@ -191,6 +196,12 @@ impl AppState {
     #[cfg(feature = "onboard")]
     pub fn set_onboard(&mut self, rt: Arc<crate::onboard_authz::OnboardRuntime>) {
         self.onboard = Some(rt);
+    }
+
+    /// Mount a SEZS implementation at `/sezs` (and `/itl`) before `router`.
+    #[cfg(feature = "sezs")]
+    pub fn set_sezs(&mut self, svc: Arc<dyn crate::sezs::SezsService>) {
+        self.sezs = Some(svc);
     }
 
     /// Embed grant plane (roles must be live terp1). Used by the orch suite.
@@ -354,6 +365,11 @@ pub fn router(state: Arc<AppState>) -> Router {
         if let Some(rt) = state.onboard.clone() {
             r = r.nest("/onboard", crate::onboard::router(rt));
         }
+        #[cfg(feature = "sezs")]
+        if let Some(svc) = state.sezs.clone() {
+            r = crate::sezs::nest_sezs(r, svc);
+        }
+
         #[cfg(feature = "re-zerve")]
         {
             r = r.nest("/re-zerve", re_zerve_router());
@@ -369,6 +385,10 @@ pub fn router(state: Arc<AppState>) -> Router {
     #[cfg(feature = "onboard")]
     if let Some(rt) = state.onboard.clone() {
         r = r.nest("/onboard", crate::onboard::router(rt));
+    }
+    #[cfg(feature = "sezs")]
+    if let Some(svc) = state.sezs.clone() {
+        r = crate::sezs::nest_sezs(r, svc);
     }
     #[cfg(feature = "re-zerve")]
     {
@@ -488,6 +508,15 @@ async fn unified_health(State(state): State<Arc<AppState>>) -> Json<serde_json::
     #[cfg(not(feature = "onboard"))]
     let onboard_status = serde_json::json!({ "enabled": false });
 
+    #[cfg(feature = "sezs")]
+    let sezs_status = if state.sezs.is_some() {
+        serde_json::json!({ "enabled": true, "prefix": "/sezs", "alias": "/itl" })
+    } else {
+        serde_json::json!({ "enabled": false })
+    };
+    #[cfg(not(feature = "sezs"))]
+    let sezs_status = serde_json::json!({ "enabled": false });
+
     Json(serde_json::json!({
         "status": "ok",
         "mode": if state.ve_enabled { "validator-sidecar" } else { "merkle-bud-host" },
@@ -496,6 +525,7 @@ async fn unified_health(State(state): State<Arc<AppState>>) -> Json<serde_json::
         "blossom": blossom_status,
         "distribution": distribution_status,
         "onboard": onboard_status,
+        "sezs": sezs_status,
         "trees": trees,
     }))
 }

@@ -23,16 +23,16 @@
 pub mod curate;
 pub mod frost_http;
 pub mod http;
-pub mod itl_auth;
-pub mod itl_cashapp;
-pub mod itl_consume;
-pub mod itl_door;
-pub mod itl_frost;
-pub mod itl_frost_rotate;
-pub mod itl_ingress;
-pub mod itl_pay;
-pub mod itl_session;
 pub mod poseidon;
+pub mod sezs_auth;
+pub mod sezs_cashapp;
+pub mod sezs_consume;
+pub mod sezs_door;
+pub mod sezs_frost;
+pub mod sezs_frost_rotate;
+pub mod sezs_ingress;
+pub mod sezs_pay;
+pub mod sezs_session;
 pub mod workflow;
 
 use serde::{Deserialize, Serialize};

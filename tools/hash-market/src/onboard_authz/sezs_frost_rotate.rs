@@ -14,7 +14,7 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 
-use super::itl_frost::{FROST_N, FROST_T};
+use super::sezs_frost::{FROST_N, FROST_T};
 
 /// Next epoch roster. Dealers (current `seats`) ack the dealing; players
 /// (`NextRoster::seats`) hold shares after apply. Commonware-reshare insight:
@@ -162,7 +162,7 @@ impl FrostCommittee {
 
     pub fn restore_snapshot(&mut self, snap: CommitteeSnapshot) -> Result<(), &'static str> {
         let raw = serde_json::to_string(&snap).unwrap_or_default();
-        if !super::itl_frost::session_json_ok(&raw)
+        if !super::sezs_frost::session_json_ok(&raw)
             || raw.to_ascii_lowercase().contains("keypackage")
             || raw.contains("packages")
         {
@@ -181,7 +181,7 @@ impl FrostCommittee {
 
     /// Live holder-mempool commit (current epoch seats + vk). Pending next_seats are not live.
     pub fn roster_commit(&self) -> String {
-        super::itl_frost::roster_commit(self.epoch, self.t, self.n, &self.group_vk, &self.seats)
+        super::sezs_frost::roster_commit(self.epoch, self.t, self.n, &self.group_vk, &self.seats)
     }
 
     /// Hash of the *proposed* next roster — must not authorize spends until apply.
@@ -190,7 +190,7 @@ impl FrostCommittee {
         if p.status != RotateStatus::Pending {
             return None;
         }
-        Some(super::itl_frost::roster_commit(
+        Some(super::sezs_frost::roster_commit(
             self.epoch.saturating_add(1),
             p.next_t,
             p.next_n,
@@ -203,7 +203,7 @@ impl FrostCommittee {
     /// HashMerchant cannot move funds without holder consensus on `roster_commit`.
     pub fn authorize_spend(
         &self,
-        job: &super::itl_frost::PendingJob,
+        job: &super::sezs_frost::PendingJob,
         memo: &str,
     ) -> Result<(), &'static str> {
         self.can_spend_new_vk()?;
@@ -218,7 +218,7 @@ impl FrostCommittee {
                 return Err("not_holder");
             }
         }
-        super::itl_frost::require_spend_memo_roster(memo, &self.roster_commit())?;
+        super::sezs_frost::require_spend_memo_roster(memo, &self.roster_commit())?;
         Ok(())
     }
 

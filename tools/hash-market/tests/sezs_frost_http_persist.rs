@@ -3,8 +3,8 @@
 
 use base64::Engine;
 use hash_market::onboard_authz::frost_http::FrostInbox;
-use hash_market::onboard_authz::itl_frost::persist_required;
-use hash_market::onboard_authz::itl_session::{adr036_sign_doc, terp_address_from_compressed};
+use hash_market::onboard_authz::sezs_frost::persist_required;
+use hash_market::onboard_authz::sezs_session::{adr036_sign_doc, terp_address_from_compressed};
 use k256::ecdsa::signature::hazmat::PrehashSigner;
 use k256::ecdsa::{Signature, SigningKey};
 use serde_json::Value;
@@ -78,12 +78,12 @@ fn admin_login() -> String {
         .unwrap()
 }
 
-/// ITL session login (challenge + ADR-036 verify) as the admin; returns the cookie.
+/// SEZS session login (challenge + ADR-036 verify) as the admin; returns the cookie.
 fn login_admin(bind: &str) -> String {
     let (c, ch, _) = http(
         bind,
         "POST",
-        "/itl/session/challenge",
+        "/sezs/session/challenge",
         &serde_json::json!({ "origin": ORIGIN }).to_string(),
         None,
     );
@@ -104,7 +104,7 @@ fn login_admin(bind: &str) -> String {
         "signature": b64.encode(sig.to_bytes()),
     })
     .to_string();
-    let (c, v, cookie) = http(bind, "POST", "/itl/session/verify", &body, None);
+    let (c, v, cookie) = http(bind, "POST", "/sezs/session/verify", &body, None);
     assert_eq!(c, 200, "{v}");
     assert_eq!(v["role"], "admin", "{v}");
     cookie.expect("session cookie")
@@ -131,10 +131,10 @@ fn free_loopback() -> String {
 fn spawn_inbox(bind: &str, key: &str, dir: &std::path::Path) -> Child {
     let bin = env!("CARGO_BIN_EXE_frost-inbox");
     Command::new(bin)
-        .env("ITL_FROST_PERSIST_KEY", key)
-        .env("ITL_FROST_PERSIST_DIR", dir)
+        .env("SEZS_FROST_PERSIST_KEY", key)
+        .env("SEZS_FROST_PERSIST_DIR", dir)
         .env("HASHMERCHANT_BIND", bind)
-        .env("ITL_FROST_BIND", bind)
+        .env("SEZS_FROST_BIND", bind)
         .env("ITL_ADMIN_CREDS", admin_login())
         .env_remove("ITL_USHER_CREDS")
         .stdout(Stdio::null())
@@ -150,13 +150,13 @@ fn kill_wait(child: &mut Child) {
 
 #[test]
 fn missing_key_stays_persistence_off_ram_only() {
-    unsafe { std::env::remove_var("ITL_FROST_PERSIST_KEY") };
+    unsafe { std::env::remove_var("SEZS_FROST_PERSIST_KEY") };
     assert_eq!(persist_required(), Err("persistence_off"));
     let dir = tmp_dir("off");
-    unsafe { std::env::set_var("ITL_FROST_PERSIST_DIR", &dir) };
+    unsafe { std::env::set_var("SEZS_FROST_PERSIST_DIR", &dir) };
     let mut a = FrostInbox::from_env().unwrap();
     assert!(!a.persist_on());
-    let rc = hash_market::onboard_authz::itl_frost_rotate::FrostCommittee::new(
+    let rc = hash_market::onboard_authz::sezs_frost_rotate::FrostCommittee::new(
         "vk-old",
         &["desk", "steward", "spare"],
     )
@@ -164,14 +164,14 @@ fn missing_key_stays_persistence_off_ram_only() {
     let r = a
         .try_handle(
             "POST",
-            "/itl/frost/jobs",
+            "/sezs/frost/jobs",
             &format!(r#"{{"pay_code":"pay-20-ink","roster_commit":"{rc}"}}"#),
         )
         .unwrap();
     assert_eq!(r.status, 200);
     drop(a);
     let mut b = FrostInbox::from_env().unwrap();
-    let g = b.try_handle("GET", "/itl/frost/jobs/job-1", "").unwrap();
+    let g = b.try_handle("GET", "/sezs/frost/jobs/job-1", "").unwrap();
     assert_eq!(
         g.status, 404,
         "RAM-only must not restore without key: {}",
@@ -179,7 +179,7 @@ fn missing_key_stays_persistence_off_ram_only() {
     );
     assert!(!dir.join("inbox.seal").exists());
     let _ = std::fs::remove_dir_all(&dir);
-    unsafe { std::env::remove_var("ITL_FROST_PERSIST_DIR") };
+    unsafe { std::env::remove_var("SEZS_FROST_PERSIST_DIR") };
 }
 
 #[test]
@@ -196,9 +196,9 @@ fn two_shares_kill_restart_get_job_one_broadcast() {
     let (c, v) = http_json(
         &bind,
         "POST",
-        "/itl/frost/jobs",
+        "/sezs/frost/jobs",
         &{
-            let rc = hash_market::onboard_authz::itl_frost_rotate::FrostCommittee::new(
+            let rc = hash_market::onboard_authz::sezs_frost_rotate::FrostCommittee::new(
                 "vk-old",
                 &["desk", "steward", "spare"],
             )
@@ -215,7 +215,7 @@ fn two_shares_kill_restart_get_job_one_broadcast() {
     let (c1, v1) = http_json(
         &bind,
         "POST",
-        &format!("/itl/frost/jobs/{id}/share"),
+        &format!("/sezs/frost/jobs/{id}/share"),
         r#"{"admin_id":"desk","blob":"S:0:a"}"#,
         &cookie,
     );
@@ -225,7 +225,7 @@ fn two_shares_kill_restart_get_job_one_broadcast() {
     let (c2, v2) = http_json(
         &bind,
         "POST",
-        &format!("/itl/frost/jobs/{id}/share"),
+        &format!("/sezs/frost/jobs/{id}/share"),
         r#"{"admin_id":"steward","blob":"S:0:b"}"#,
         &cookie,
     );
@@ -239,7 +239,7 @@ fn two_shares_kill_restart_get_job_one_broadcast() {
     // sessions are in-memory, so the restarted inbox needs a fresh login
     let cookie = login_admin(&bind);
 
-    let (cg, vg) = http_json(&bind, "GET", &format!("/itl/frost/jobs/{id}"), "", &cookie);
+    let (cg, vg) = http_json(&bind, "GET", &format!("/sezs/frost/jobs/{id}"), "", &cookie);
     assert_eq!(cg, 200, "{vg}");
     assert_eq!(vg["ok"], true);
     let st = vg["status"].as_str().unwrap_or("");
@@ -252,7 +252,7 @@ fn two_shares_kill_restart_get_job_one_broadcast() {
     let (cb, vb) = http_json(
         &bind,
         "POST",
-        &format!("/itl/frost/jobs/{id}/broadcast"),
+        &format!("/sezs/frost/jobs/{id}/broadcast"),
         r#"{"txid":"txid-20"}"#,
         &cookie,
     );

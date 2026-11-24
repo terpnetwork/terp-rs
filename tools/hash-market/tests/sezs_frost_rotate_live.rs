@@ -2,20 +2,20 @@
 //!
 //! Proof path (groot-wan, Docker up, refuse ICT_MOCK=1):
 //! ```sh
-//! cargo run --example itl_frost_local_prod -p ict-rs-cw-orch --features docker
+//! cargo run --example sezs_frost_local_prod -p ict-rs-cw-orch --features docker
 //! ```
 //! Query must show pending → t shares → `group_vk` changed on-chain.
 //! Do not put the inbox on Authenticate sudo.
 
-use hash_market::onboard_authz::itl_frost_rotate::{
+use hash_market::onboard_authz::sezs_frost_rotate::{
     EXECUTE_CONTRACT_TYPE_URL, ROTATE_MSG, msg_rotate_frost_pubkey, vk_commit,
 };
 
 #[ignore = "needs ICT_SPAWN"]
 #[test]
-fn itl_frost_rotate_live_execute_not_authenticate() {
+fn sezs_frost_rotate_live_execute_not_authenticate() {
     if std::env::var("ICT_MOCK").ok().as_deref() == Some("1") {
-        panic!("itl_frost_rotate_live refuses ICT_MOCK=1");
+        panic!("sezs_frost_rotate_live refuses ICT_MOCK=1");
     }
     let m = msg_rotate_frost_pubkey(
         "terp1desk",

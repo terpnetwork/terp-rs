@@ -1,11 +1,11 @@
 //! Tickets pay HTTP — local, no chain, no mainnet.
 
-use hash_market::onboard_authz::itl_ingress::cashapp_on_tickets;
-use hash_market::onboard_authz::itl_pay::{health_json, instruct_json, quote_json, try_handle};
+use hash_market::onboard_authz::sezs_ingress::cashapp_on_tickets;
+use hash_market::onboard_authz::sezs_pay::{health_json, instruct_json, quote_json, try_handle};
 use serde_json::Value;
 
 #[test]
-fn itl_pay_quote_is_tickets_catalog() {
+fn sezs_pay_quote_is_tickets_catalog() {
     assert!(!cashapp_on_tickets());
     let q = quote_json();
     assert_eq!(q["ok"], true);
@@ -27,7 +27,7 @@ fn itl_pay_quote_is_tickets_catalog() {
 }
 
 #[test]
-fn itl_pay_cashapp_refused_and_penumbra_coming() {
+fn sezs_pay_cashapp_refused_and_penumbra_coming() {
     let c = instruct_json("cashapp", "cred");
     assert_eq!(c["error"], "cashapp_door_only");
     let p = instruct_json("penumbra", "");
@@ -37,15 +37,15 @@ fn itl_pay_cashapp_refused_and_penumbra_coming() {
 }
 
 #[test]
-fn itl_pay_http_surface() {
-    let h = try_handle("GET", "/itl/pay/health", "").expect("health");
+fn sezs_pay_http_surface() {
+    let h = try_handle("GET", "/sezs/pay/health", "").expect("health");
     assert_eq!(h.status, 200);
     assert!(h.body.contains("cashapp_on_tickets"));
     assert!(h.body.contains("penumbra_coming"));
     assert!(h.body.contains("\"anvil_refused\":true"));
-    let q = try_handle("GET", "/itl/pay/quote", "").expect("quote");
+    let q = try_handle("GET", "/sezs/pay/quote", "").expect("quote");
     assert_eq!(q.status, 200);
-    let i = try_handle("GET", "/itl/pay/instruct?rail=eth&recipient=terp1q", "").unwrap();
+    let i = try_handle("GET", "/sezs/pay/instruct?rail=eth&recipient=terp1q", "").unwrap();
     assert!(i.body.contains("dregg_not_ready") || i.body.contains("need_binding"));
     assert!(try_handle("GET", "/nope", "").is_none());
     let _ = health_json();
@@ -55,7 +55,7 @@ fn itl_pay_http_surface() {
 fn browser_forged_paid_flag_does_not_unlock_ticket() {
     let forged = try_handle(
         "POST",
-        "/itl/pay/watch",
+        "/sezs/pay/watch",
         r#"{"paid":true,"binding":"e2e-forge","rail":"zec"}"#,
     )
     .unwrap();
@@ -66,7 +66,7 @@ fn browser_forged_paid_flag_does_not_unlock_ticket() {
 
     let post = try_handle(
         "POST",
-        "/itl/pay/ticket?binding=e2e-forge",
+        "/sezs/pay/ticket?binding=e2e-forge",
         r#"{"paid":true}"#,
     )
     .unwrap();
@@ -74,7 +74,7 @@ fn browser_forged_paid_flag_does_not_unlock_ticket() {
     let p: Value = serde_json::from_str(&post.body).unwrap();
     assert_eq!(p["error"], "browser_paid");
 
-    let read = try_handle("GET", "/itl/pay/ticket?binding=e2e-forge", "").unwrap();
+    let read = try_handle("GET", "/sezs/pay/ticket?binding=e2e-forge", "").unwrap();
     let r: Value = serde_json::from_str(&read.body).unwrap();
     assert_eq!(r["paid"], false, "forged paid must not unlock");
 }
@@ -87,14 +87,14 @@ fn server_watch_fact_is_the_only_paid_writer() {
         "dest":"0x00000000000000000000000000000000000000aa",
         "binding":"terp1r2e2eeth0000000000000000000000000000"
     }"#;
-    let w = try_handle("POST", "/itl/pay/watch", body).unwrap();
+    let w = try_handle("POST", "/sezs/pay/watch", body).unwrap();
     assert_eq!(w.status, 200);
     let v: Value = serde_json::from_str(&w.body).unwrap();
     assert_eq!(v["paid"], true);
 
     let read = try_handle(
         "GET",
-        "/itl/pay/ticket?binding=terp1r2e2eeth0000000000000000000000000000",
+        "/sezs/pay/ticket?binding=terp1r2e2eeth0000000000000000000000000000",
         "",
     )
     .unwrap();
@@ -105,7 +105,7 @@ fn server_watch_fact_is_the_only_paid_writer() {
 
     let poll = try_handle(
         "GET",
-        "/itl/pay/poll?rail=eth&dest=0x00000000000000000000000000000000000000aa&record=eth_watch_r2_e2e_01",
+        "/sezs/pay/poll?rail=eth&dest=0x00000000000000000000000000000000000000aa&record=eth_watch_r2_e2e_01",
         "",
     )
     .unwrap();

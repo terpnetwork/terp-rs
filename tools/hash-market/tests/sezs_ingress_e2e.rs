@@ -1,13 +1,13 @@
-//! Ingress plane — same crate as combo / itl_cashapp_e2e.
+//! Ingress plane — same crate as combo / sezs_cashapp_e2e.
 //! Local: no chain, no Docker, no Square, no second ETH/BTC/ZEC stack.
 //!
-//!   cargo test --manifest-path tools/onboard-authz/Cargo.toml --test itl_ingress_e2e
+//!   cargo test --manifest-path tools/onboard-authz/Cargo.toml --test sezs_ingress_e2e
 
-use hash_market::onboard_authz::itl_cashapp::{
+use hash_market::onboard_authz::sezs_cashapp::{
     LIST_CENTS, SKU, nullifier_hex, parse_eml_wasix, synthetic_received_eml, synthetic_sent_eml,
     wasix_parse_json,
 };
-use hash_market::onboard_authz::itl_ingress::{
+use hash_market::onboard_authz::sezs_ingress::{
     CASHAPP_CHAIN_ID, DreggWatch, EVENT_ID, EvidenceKind, IngressEngine, Rail, SVG_MINT_FEATURES,
     SVG_MINT_LOCAL_PROD, browser_paid_refused, cashapp_chain_id, cashapp_local_prod_cmd, dest_ok,
     dregg_endpoint_ok, dregg_instruct_commits_paid, dregg_spawn_cmd, evidence_may_commit,
@@ -20,7 +20,7 @@ use std::collections::HashSet;
 use std::sync::Mutex;
 
 #[test]
-fn itl_ingress_gap0_wasix_parse_payment_sent_reject() {
+fn sezs_ingress_gap0_wasix_parse_payment_sent_reject() {
     let eml = synthetic_received_eml("cmt_7F3K2", 2500, "D-VR992KMXL");
     let p = parse_eml_wasix(&eml).expect("wasix parse");
     assert_eq!(p.pay_ref, "cmt_7F3K2");
@@ -37,7 +37,7 @@ fn itl_ingress_gap0_wasix_parse_payment_sent_reject() {
 }
 
 #[test]
-fn itl_ingress_cashapp_inject_to_poseidon_guest_root() {
+fn sezs_ingress_cashapp_inject_to_poseidon_guest_root() {
     let mut e = IngressEngine::default();
     let empty = e.guest_root_hex();
     let o = e.create_cash_order("cred-guest");
@@ -67,7 +67,7 @@ fn itl_ingress_cashapp_inject_to_poseidon_guest_root() {
 }
 
 #[test]
-fn itl_ingress_replay_txid_and_payment_sent_refused() {
+fn sezs_ingress_replay_txid_and_payment_sent_refused() {
     let mut e = IngressEngine::default();
     let o = e.create_cash_order("g1");
     let eml = synthetic_received_eml(&o.pay_ref, LIST_CENTS, "D-BBBBBBBBB");
@@ -87,7 +87,7 @@ fn itl_ingress_replay_txid_and_payment_sent_refused() {
 }
 
 #[test]
-fn itl_ingress_rush_64_unique_commitments_and_nullifiers() {
+fn sezs_ingress_rush_64_unique_commitments_and_nullifiers() {
     let mut e = IngressEngine::default();
     let mut roots = HashSet::new();
     roots.insert(e.guest_root_hex());
@@ -117,7 +117,7 @@ fn itl_ingress_rush_64_unique_commitments_and_nullifiers() {
 }
 
 #[test]
-fn itl_ingress_concurrent_pays_unique_nullifiers() {
+fn sezs_ingress_concurrent_pays_unique_nullifiers() {
     let e = Mutex::new(IngressEngine::default());
     {
         let mut g = e.lock().unwrap();
@@ -145,7 +145,7 @@ fn itl_ingress_concurrent_pays_unique_nullifiers() {
 }
 
 #[test]
-fn itl_ingress_poseidon_leaf_is_not_sha256() {
+fn sezs_ingress_poseidon_leaf_is_not_sha256() {
     let secret = [7u8; 32];
     let leaf = ticket_leaf(&secret, SKU, EVENT_ID);
     let mut h = Sha256::new();
@@ -162,7 +162,7 @@ fn itl_ingress_poseidon_leaf_is_not_sha256() {
 }
 
 #[test]
-fn itl_ingress_dregg_watch_commits_instruct_does_not() {
+fn sezs_ingress_dregg_watch_commits_instruct_does_not() {
     assert!(!dregg_instruct_commits_paid());
     assert!(evidence_may_commit(EvidenceKind::DreggWatch));
     assert!(evidence_may_commit(EvidenceKind::CashappReceipt));
@@ -220,7 +220,7 @@ fn itl_ingress_dregg_watch_commits_instruct_does_not() {
 }
 
 #[test]
-fn itl_ingress_dregg_reuses_svg_mint_local_prod_no_second_stack() {
+fn sezs_ingress_dregg_reuses_svg_mint_local_prod_no_second_stack() {
     assert_eq!(dregg_spawn_cmd(), SVG_MINT_LOCAL_PROD);
     assert!(SVG_MINT_LOCAL_PROD.contains("svg_mint_local_prod"));
     assert!(SVG_MINT_LOCAL_PROD.contains(SVG_MINT_FEATURES));
@@ -234,13 +234,13 @@ fn itl_ingress_dregg_reuses_svg_mint_local_prod_no_second_stack() {
     assert!(is_second_stack_spawn("anvil --fork-url http://fake-rpc"));
     assert!(dregg_endpoint_ok("http://127.0.0.1:8421"));
     assert!(!dregg_endpoint_ok("http://fake-rpc.example"));
-    assert!(cashapp_local_prod_cmd().contains("itl_cashapp_local_prod"));
+    assert!(cashapp_local_prod_cmd().contains("sezs_cashapp_local_prod"));
     assert!(ict_mock_refused(Some("1")));
     assert!(!ict_mock_refused(None));
 }
 
 #[test]
-fn itl_ingress_amazonses_dkim_alone_rejected() {
+fn sezs_ingress_amazonses_dkim_alone_rejected() {
     let eml = synthetic_received_eml("cmt_7F3K2", 2500, "D-VR992KMXL")
         .replace("d=square.com", "d=amazonses.com");
     assert_eq!(parse_eml_wasix(&eml).unwrap_err(), "dkim_domain");
@@ -259,16 +259,16 @@ fn live_dregg_svg_mint_local_prod() {
 
 /// Live: ict-rs Cash App Docker Terp. Mail inject is the only mock.
 #[test]
-#[ignore = "needs ICT_LCD or ict spawn (itl_cashapp_local_prod)"]
+#[ignore = "needs ICT_LCD or ict spawn (sezs_cashapp_local_prod)"]
 fn live_cashapp_local_prod_refuses_ict_mock() {
     if ict_mock_refused(std::env::var("ICT_MOCK").ok().as_deref()) {
         panic!("ICT_MOCK=1 refused");
     }
-    assert!(cashapp_local_prod_cmd().contains("itl_cashapp_local_prod"));
+    assert!(cashapp_local_prod_cmd().contains("sezs_cashapp_local_prod"));
 }
 
 #[test]
-fn itl_ingress_wasix_json_issues_poseidon_commitment() {
+fn sezs_ingress_wasix_json_issues_poseidon_commitment() {
     let mut e = IngressEngine::default();
     let o = e.create_cash_order("cred-wasix");
     let eml = synthetic_received_eml(&o.pay_ref, LIST_CENTS, "D-WASIX0001");
@@ -297,7 +297,7 @@ fn itl_ingress_wasix_json_issues_poseidon_commitment() {
 }
 
 #[test]
-fn itl_ingress_dregg_btc_eth_base_reuse_svg_mint_not_second_stack() {
+fn sezs_ingress_dregg_btc_eth_base_reuse_svg_mint_not_second_stack() {
     assert!(!is_second_stack_spawn(SVG_MINT_LOCAL_PROD));
     let mut e = IngressEngine::default();
     let watches = [
@@ -329,8 +329,8 @@ fn itl_ingress_dregg_btc_eth_base_reuse_svg_mint_not_second_stack() {
 }
 
 #[test]
-fn itl_ingress_tickets_catalog_excludes_cashapp_and_refuses_mainnet() {
-    use hash_market::onboard_authz::itl_ingress::{
+fn sezs_ingress_tickets_catalog_excludes_cashapp_and_refuses_mainnet() {
+    use hash_market::onboard_authz::sezs_ingress::{
         cashapp_on_tickets, lab_evm_chain_id, mainnet_chain_id_refused, tickets_catalog,
         zec_mainnet_ua,
     };

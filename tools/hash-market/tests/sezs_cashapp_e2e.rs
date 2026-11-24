@@ -1,15 +1,15 @@
-//! Cash App zkEmail dimension — same crate as combo / itl_auth_e2e.
+//! Cash App zkEmail dimension — same crate as combo / sezs_auth_e2e.
 //! Local: no chain, no Docker, no Square. Live ingest is ignored.
 //!
-//!   cargo test --manifest-path tools/onboard-authz/Cargo.toml --test itl_cashapp_e2e
+//!   cargo test --manifest-path tools/onboard-authz/Cargo.toml --test sezs_cashapp_e2e
 
-use hash_market::onboard_authz::itl_cashapp::{
+use hash_market::onboard_authz::sezs_cashapp::{
     CHECK_IN_GUEST, Engine, LIST_CENTS, SKU, parse_received_text, receipt_json,
     synthetic_received_html,
 };
 
 #[test]
-fn itl_cashapp_gap0_fields_and_payment_sent_reject() {
+fn sezs_cashapp_gap0_fields_and_payment_sent_reject() {
     let html = synthetic_received_html("cmt_7F3K2", 2500, "D-VR992KMXL");
     let p = parse_received_text(&html, "Payment received").expect("parse");
     assert_eq!(p.pay_ref, "cmt_7F3K2");
@@ -19,7 +19,7 @@ fn itl_cashapp_gap0_fields_and_payment_sent_reject() {
 }
 
 #[test]
-fn itl_cashapp_payref_bind_nullifier_replay_unknown_note() {
+fn sezs_cashapp_payref_bind_nullifier_replay_unknown_note() {
     let mut e = Engine::default();
     let o = e.create_order("cred-guest");
     let html = synthetic_received_html(&o.pay_ref, LIST_CENTS, "D-AAAAAAAAA");
@@ -42,7 +42,7 @@ fn itl_cashapp_payref_bind_nullifier_replay_unknown_note() {
 }
 
 #[test]
-fn itl_cashapp_rush_64_unique_nullifiers() {
+fn sezs_cashapp_rush_64_unique_nullifiers() {
     let mut e = Engine::default();
     for i in 0..64 {
         let o = e.create_order(&format!("g{i}"));
@@ -55,7 +55,7 @@ fn itl_cashapp_rush_64_unique_nullifiers() {
 }
 
 #[test]
-fn itl_cashapp_reservation_one_winner() {
+fn sezs_cashapp_reservation_one_winner() {
     let mut e = Engine::default();
     let mut ok = 0;
     let mut taken = 0;
@@ -75,7 +75,7 @@ fn itl_cashapp_reservation_one_winner() {
 }
 
 #[test]
-fn itl_cashapp_receipt_json_is_tickets_plane_shape() {
+fn sezs_cashapp_receipt_json_is_tickets_plane_shape() {
     let j = receipt_json("cmt_ABCDE", 2500, "D-VR992KMXL");
     assert_eq!(j["payRef"], "cmt_ABCDE");
     assert_eq!(j["amountCents"], 2500);

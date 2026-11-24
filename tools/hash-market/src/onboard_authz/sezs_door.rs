@@ -3,7 +3,7 @@
 //! This is the local stand-in for cw-ave VerifyConsume. It does not list guests.
 
 use super::http::HttpResponse;
-use super::itl_session::session_from_cookie;
+use super::sezs_session::session_from_cookie;
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::BTreeSet;
@@ -81,11 +81,12 @@ pub fn try_handle(
     body: &str,
     cookie: Option<&str>,
 ) -> Option<HttpResponse> {
-    let path = path.split('?').next().unwrap_or(path);
+    let canon = crate::sezs::canonical_path(path);
+    let path = canon.split('?').next().unwrap_or(canon.as_str());
     if method != "POST" {
         return None;
     }
-    if path == "/itl/door/paid" {
+    if path == "/sezs/door/paid" {
         let parsed: TicketBody = serde_json::from_str(body).ok()?;
         let mut g = book().lock().ok()?;
         if parsed.ticket.trim().is_empty() {
@@ -94,7 +95,7 @@ pub fn try_handle(
         g.paid.insert(parsed.ticket);
         return Some(ok(json!("paid")));
     }
-    if path == "/itl/door/ushers" {
+    if path == "/sezs/door/ushers" {
         let parsed: UsherBody = serde_json::from_str(body).ok()?;
         let id = parsed.id.trim().to_string();
         if id.is_empty() {
@@ -110,7 +111,7 @@ pub fn try_handle(
         }
         return Some(ok(json!(g.ushers.iter().cloned().collect::<Vec<_>>())));
     }
-    if path == "/itl/door/consume" {
+    if path == "/sezs/door/consume" {
         let view = session_from_cookie(cookie)?;
         if view.role != "usher" {
             return Some(err(403, "not_usher"));
@@ -131,7 +132,7 @@ pub fn try_handle(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::onboard_authz::itl_session::mint_test_cookie;
+    use crate::onboard_authz::sezs_session::mint_test_cookie;
 
     #[test]
     fn unpaid_double_and_removed_usher_are_refused() {
@@ -141,7 +142,7 @@ mod tests {
         assert_eq!(
             try_handle(
                 "POST",
-                "/itl/door/ushers",
+                "/sezs/door/ushers",
                 r#"{"id":"ada","action":"add"}"#,
                 Some(&admin)
             )
@@ -151,7 +152,7 @@ mod tests {
         );
         let unpaid = try_handle(
             "POST",
-            "/itl/door/consume",
+            "/sezs/door/consume",
             r#"{"ticket":"tkt-1"}"#,
             Some(&usher),
         )
@@ -161,7 +162,7 @@ mod tests {
         assert_eq!(
             try_handle(
                 "POST",
-                "/itl/door/paid",
+                "/sezs/door/paid",
                 r#"{"ticket":"tkt-1"}"#,
                 Some(&admin)
             )
@@ -172,7 +173,7 @@ mod tests {
         assert_eq!(
             try_handle(
                 "POST",
-                "/itl/door/consume",
+                "/sezs/door/consume",
                 r#"{"ticket":"tkt-1"}"#,
                 Some(&usher),
             )
@@ -182,7 +183,7 @@ mod tests {
         );
         let again = try_handle(
             "POST",
-            "/itl/door/consume",
+            "/sezs/door/consume",
             r#"{"ticket":"tkt-1"}"#,
             Some(&usher),
         )
@@ -190,13 +191,13 @@ mod tests {
         assert!(again.body.contains("nullifier_spent"));
         try_handle(
             "POST",
-            "/itl/door/ushers",
+            "/sezs/door/ushers",
             r#"{"id":"ada","action":"remove"}"#,
             Some(&admin),
         );
         let gone = try_handle(
             "POST",
-            "/itl/door/consume",
+            "/sezs/door/consume",
             r#"{"ticket":"tkt-2"}"#,
             Some(&usher),
         )

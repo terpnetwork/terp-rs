@@ -1,4 +1,4 @@
-//! Artist/admin web session for the ITL static export.
+//! Artist/admin web session for the SEZS static export.
 //!
 //! Next `output: 'export'` cannot `Set-Cookie`. This module is served by the
 //! existing HashMerchant frost inbox (`127.0.0.1:19091`), not by Next and not
@@ -22,7 +22,7 @@ use std::io::Write;
 use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const COOKIE_NAME: &str = "itl_session";
+const COOKIE_NAME: &str = "sezs_session";
 const TTL_SECS: u64 = 4 * 3600;
 const CHALLENGE_TTL_SECS: u64 = 5 * 60;
 const CHALLENGE_PREFIX: &[u8] = b"itl-login-v1";
@@ -224,7 +224,7 @@ fn challenge_hex(origin: &str, artist_id: &str, nonce: &str, ts: u64) -> String 
 }
 
 fn login_message(origin: &str, challenge: &str) -> String {
-    format!("ITL login v1\norigin: {origin}\nchallenge: {challenge}")
+    format!("SEZS login v1\norigin: {origin}\nchallenge: {challenge}")
 }
 
 /// ADR-036 amino sign doc a wallet signs for `signer` over `data`.
@@ -589,8 +589,9 @@ pub fn try_handle(
     origin: Option<&str>,
     cookie: Option<&str>,
 ) -> Option<SessionResponse> {
-    let path = path.split('?').next().unwrap_or(path);
-    if !path.starts_with("/itl/session") {
+    let canon = crate::sezs::canonical_path(path);
+    let path = canon.split('?').next().unwrap_or(canon.as_str());
+    if !path.starts_with("/sezs/session") {
         return None;
     }
     if method == "OPTIONS" {
@@ -600,7 +601,7 @@ pub fn try_handle(
             set_cookie: None,
         });
     }
-    if method == "GET" && (path == "/itl/session/health" || path == "/itl/session") {
+    if method == "GET" && (path == "/sezs/session/health" || path == "/sezs/session") {
         return Some(SessionResponse::json(
             200,
             json!({
@@ -611,16 +612,16 @@ pub fn try_handle(
             .to_string(),
         ));
     }
-    if method == "POST" && path == "/itl/session/challenge" {
+    if method == "POST" && path == "/sezs/session/challenge" {
         return Some(challenge(origin, body));
     }
-    if method == "POST" && path == "/itl/session/verify" {
+    if method == "POST" && path == "/sezs/session/verify" {
         return Some(verify(origin, body));
     }
-    if method == "GET" && path == "/itl/session/me" {
+    if method == "GET" && path == "/sezs/session/me" {
         return Some(me(cookie));
     }
-    if method == "POST" && path == "/itl/session/logout" {
+    if method == "POST" && path == "/sezs/session/logout" {
         return Some(logout(cookie));
     }
     Some(SessionResponse::err(404, "not found"))
@@ -677,7 +678,7 @@ mod tests {
         let origin = "http://127.0.0.1:3051";
         let ch = try_handle(
             "POST",
-            "/itl/session/challenge",
+            "/sezs/session/challenge",
             &json!({"origin": origin}).to_string(),
             Some(origin),
             None,
@@ -703,7 +704,7 @@ mod tests {
             "signature": signature,
         })
         .to_string();
-        let vr = try_handle("POST", "/itl/session/verify", &body, Some(origin), None).unwrap();
+        let vr = try_handle("POST", "/sezs/session/verify", &body, Some(origin), None).unwrap();
         assert_eq!(vr.status, 200, "{}", vr.body);
         let got: serde_json::Value = serde_json::from_str(&vr.body).unwrap();
         assert_eq!(got["role"], "admin");
@@ -715,13 +716,13 @@ mod tests {
             "{COOKIE_NAME}={}",
             cookie.split('=').nth(1).unwrap().split(';').next().unwrap()
         );
-        let me = try_handle("GET", "/itl/session/me", "", Some(origin), Some(&hdr)).unwrap();
+        let me = try_handle("GET", "/sezs/session/me", "", Some(origin), Some(&hdr)).unwrap();
         assert_eq!(me.status, 200);
         let mej: serde_json::Value = serde_json::from_str(&me.body).unwrap();
         assert_eq!(mej["role"], "admin");
-        let out = try_handle("POST", "/itl/session/logout", "", Some(origin), Some(&hdr)).unwrap();
+        let out = try_handle("POST", "/sezs/session/logout", "", Some(origin), Some(&hdr)).unwrap();
         assert_eq!(out.status, 200);
-        let me2 = try_handle("GET", "/itl/session/me", "", Some(origin), Some(&hdr)).unwrap();
+        let me2 = try_handle("GET", "/sezs/session/me", "", Some(origin), Some(&hdr)).unwrap();
         assert_eq!(me2.status, 401);
     }
 
@@ -733,7 +734,7 @@ mod tests {
         set_test_env("NEXT_PUBLIC_ITL_ADMIN_CREDS", "should-not-count");
         let ch = try_handle(
             "POST",
-            "/itl/session/challenge",
+            "/sezs/session/challenge",
             &json!({"origin": origin}).to_string(),
             Some(origin),
             None,
@@ -753,9 +754,9 @@ mod tests {
             "signature": base64::engine::general_purpose::STANDARD.encode([0u8; 64]),
         })
         .to_string();
-        let vr = try_handle("POST", "/itl/session/verify", &body, Some(origin), None).unwrap();
+        let vr = try_handle("POST", "/sezs/session/verify", &body, Some(origin), None).unwrap();
         assert_eq!(vr.status, 401);
-        let me = try_handle("GET", "/itl/session/me", "", Some(origin), None).unwrap();
+        let me = try_handle("GET", "/sezs/session/me", "", Some(origin), None).unwrap();
         assert_eq!(me.status, 401);
     }
 

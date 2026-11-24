@@ -307,10 +307,10 @@ async fn main() -> anyhow::Result<()> {
 
     // FROST inbox: HashMerchant adapter (not FilePV). Loopback only.
     {
-        if std::env::var("ITL_FROST_PERSIST_DIR").is_err() {
+        if std::env::var("SEZS_FROST_PERSIST_DIR").is_err() {
             let dir = format!("{}/itl-frost", config.data_dir.as_deref().unwrap_or("data"));
             // SAFETY: one-shot default during startup; nothing reads env concurrently here.
-            unsafe { std::env::set_var("ITL_FROST_PERSIST_DIR", &dir) };
+            unsafe { std::env::set_var("SEZS_FROST_PERSIST_DIR", &dir) };
         }
         let frost_bind =
             hash_market::onboard_authz::frost_http::loopback_bind().map_err(anyhow::Error::msg)?;
@@ -318,7 +318,7 @@ async fn main() -> anyhow::Result<()> {
             .map_err(anyhow::Error::msg)?;
         tracing::info!(
             bind = %frost_bind,
-            persist = hash_market::onboard_authz::itl_frost::persist_required().is_ok(),
+            persist = hash_market::onboard_authz::sezs_frost::persist_required().is_ok(),
             "embedded frost inbox (127.0.0.1; not FilePV)"
         );
         let frost_app = hash_market::frost::router(inbox);

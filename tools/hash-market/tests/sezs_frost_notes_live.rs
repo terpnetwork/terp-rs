@@ -3,13 +3,13 @@
 //! frost_ironwood_send_v6 live path.
 //!
 //!   ICT_SPAWN=1 cargo test --manifest-path tools/onboard-authz/Cargo.toml \
-//!     --test itl_frost_notes_live -- --ignored --nocapture
+//!     --test sezs_frost_notes_live -- --ignored --nocapture
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-use hash_market::onboard_authz::itl_frost::{
+use hash_market::onboard_authz::sezs_frost::{
     FROST_N, FROST_T, JobStatus, Ledger, PayRecord, PayeeKind, PayoutLeg, PendingJob, TicketInflow,
     confirm_txid_on_node, lab_taddr, require_node_txid, require_transparent_taddr,
 };
@@ -19,7 +19,7 @@ const ZTREAMER_BIND: &str = "127.0.0.1:19067";
 
 fn refuse_mock() {
     if std::env::var("ICT_MOCK").ok().as_deref() == Some("1") {
-        panic!("itl_frost_notes_live refuses ICT_MOCK=1");
+        panic!("sezs_frost_notes_live refuses ICT_MOCK=1");
     }
 }
 
@@ -96,7 +96,7 @@ fn spawn_zakura() {
     let cfg = tmp.join("node-corridor.toml");
     std::fs::write(
         &cfg,
-        r#"# ITL frost notes live
+        r#"# SEZS frost notes live
 [network]
 network = "Regtest"
 listen_addr = "0.0.0.0:18233"
@@ -219,7 +219,7 @@ fn grab(stdout: &str, key: &str) -> Option<String> {
 
 #[ignore = "needs ICT_SPAWN"]
 #[test]
-fn itl_frost_notes_20_then_80_node_confirmed() {
+fn sezs_frost_notes_20_then_80_node_confirmed() {
     refuse_mock();
     spawn_zakura();
     let _zt = spawn_ztreamer();
@@ -308,7 +308,7 @@ fn itl_frost_notes_20_then_80_node_confirmed() {
     .unwrap();
     l.mark_broadcast("pay-80-ink", &txid_80).unwrap();
 
-    let rc = hash_market::onboard_authz::itl_frost_rotate::FrostCommittee::new(
+    let rc = hash_market::onboard_authz::sezs_frost_rotate::FrostCommittee::new(
         "vk-old",
         &["desk", "steward", "spare"],
     )

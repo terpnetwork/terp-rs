@@ -9,9 +9,9 @@
 //! Public after a sale: new `guest_root` (and count). Not txId, not amount, not credId.
 //! zkEmail Groth16 is out. FROST is out.
 
-use super::itl_auth::zip321_ok;
-use super::itl_cashapp::{Engine as CashEngine, LIST_CENTS, SKU, nullifier_hex, wasix_parse_json};
 use super::poseidon::{PoseidonTree, door_nullifier, hex_encode, ticket_leaf};
+use super::sezs_auth::zip321_ok;
+use super::sezs_cashapp::{Engine as CashEngine, LIST_CENTS, SKU, nullifier_hex, wasix_parse_json};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
@@ -123,7 +123,7 @@ pub struct IngressEngine {
 }
 
 impl IngressEngine {
-    pub fn create_cash_order(&mut self, buyer: &str) -> super::itl_cashapp::Order {
+    pub fn create_cash_order(&mut self, buyer: &str) -> super::sezs_cashapp::Order {
         self.cash.create_order(buyer)
     }
 
@@ -202,7 +202,7 @@ impl IngressEngine {
             return Err("nullifier_mismatch");
         }
         // Bind to an existing order when the engine minted the payRef.
-        let html = super::itl_cashapp::synthetic_received_html(pay_ref, amount, tx_id);
+        let html = super::sezs_cashapp::synthetic_received_html(pay_ref, amount, tx_id);
         let _ = self.cash.ingest_text(&html, "Payment received")?;
         self.issue_from_payment(Rail::CashApp, &nf, Some(tx_id), pay_ref)
     }
@@ -425,7 +425,7 @@ pub fn dregg_endpoint_ok(url: &str) -> bool {
 
 /// Live ict-rs Cash App path. Refuses ICT_MOCK=1.
 pub fn cashapp_local_prod_cmd() -> &'static str {
-    "cargo run --example itl_cashapp_local_prod -p ict-rs-cw-orch --features docker"
+    "cargo run --example sezs_cashapp_local_prod -p ict-rs-cw-orch --features docker"
 }
 
 pub fn cashapp_chain_id() -> &'static str {
@@ -466,7 +466,7 @@ pub fn guest_root_contract() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::onboard_authz::itl_cashapp::synthetic_received_eml;
+    use crate::onboard_authz::sezs_cashapp::synthetic_received_eml;
 
     #[test]
     fn public_json_omits_txid() {

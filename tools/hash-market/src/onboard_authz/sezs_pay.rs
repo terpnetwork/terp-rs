@@ -1,10 +1,10 @@
-//! Loopback ITL tickets pay surface. Shares the frost inbox listener
+//! Loopback SEZS tickets pay surface. Shares the frost inbox listener
 //! (`127.0.0.1:19091`). Not a second proxy. Not Cash App (door only).
 //! Mainnet origins and chain ids are refused. Dest on screen is not paid.
 //! Paid is a server watcher fact. The browser may only read it.
 
 use super::http::HttpResponse;
-use super::itl_ingress::{
+use super::sezs_ingress::{
     DreggWatch, IngressEngine, Rail, dregg_endpoint_ok, dregg_instruct_commits_paid,
     lab_evm_chain_id, mainnet_chain_id_refused, tickets_catalog,
 };
@@ -384,7 +384,7 @@ fn poll_json(query: &str) -> Value {
             "status": "waiting",
             "rail": "penumbra",
             "coming": true,
-            "label": "Shielded Penumbra is named and coming. narsil is a ZEC syndicate scanner, not an ITL Penumbra watcher. Not paid."
+            "label": "Shielded Penumbra is named and coming. narsil is a ZEC syndicate scanner, not an SEZS Penumbra watcher. Not paid."
         });
     }
     if rail_of(&rail_s) == Some(Rail::CashApp) {
@@ -473,7 +473,7 @@ pub fn health_json() -> Value {
     })
 }
 
-/// Named, not selectable. narsil is not an ITL Penumbra note watcher.
+/// Named, not selectable. narsil is not an SEZS Penumbra note watcher.
 pub fn penumbra_instruct() -> Value {
     json!({
         "ok": false,
@@ -481,7 +481,7 @@ pub fn penumbra_instruct() -> Value {
         "error": "penumbra_coming",
         "paid": false,
         "coming": true,
-        "label": "Shielded Penumbra is coming. narsil scans ZEC syndicate notes, not ITL Penumbra dests. No transfer from this page."
+        "label": "Shielded Penumbra is coming. narsil scans ZEC syndicate notes, not SEZS Penumbra dests. No transfer from this page."
     })
 }
 
@@ -523,34 +523,35 @@ pub fn instruct_json(rail: &str, recipient: &str) -> Value {
 }
 
 pub fn try_handle(method: &str, path_and_query: &str, body: &str) -> Option<HttpResponse> {
-    let (path, query) = split_path(path_and_query);
-    if !path.starts_with("/itl/pay") {
+    let canon = crate::sezs::canonical_path(path_and_query);
+    let (path, query) = split_path(&canon);
+    if !path.starts_with("/sezs/pay") {
         return None;
     }
     if method == "OPTIONS" {
         return Some(json_resp(200, json!({})));
     }
-    if method == "GET" && (path == "/itl/pay/health" || path == "/itl/pay") {
+    if method == "GET" && (path == "/sezs/pay/health" || path == "/sezs/pay") {
         return Some(json_resp(200, health_json()));
     }
-    if method == "GET" && path == "/itl/pay/quote" {
+    if method == "GET" && path == "/sezs/pay/quote" {
         return Some(json_resp(200, quote_json()));
     }
-    if method == "GET" && path == "/itl/pay/instruct" {
+    if method == "GET" && path == "/sezs/pay/instruct" {
         let rail = qparam(query, "rail").unwrap_or_default();
         let recipient = qparam(query, "recipient").unwrap_or_default();
         return Some(json_resp(200, instruct_json(&rail, &recipient)));
     }
-    if method == "GET" && path == "/itl/pay/poll" {
+    if method == "GET" && path == "/sezs/pay/poll" {
         return Some(json_resp(200, poll_json(query)));
     }
-    if method == "GET" && path == "/itl/pay/ticket" {
+    if method == "GET" && path == "/sezs/pay/ticket" {
         return Some(ticket_of(query));
     }
-    if method == "POST" && path == "/itl/pay/ticket" {
+    if method == "POST" && path == "/sezs/pay/ticket" {
         return Some(json_resp(400, browser_paid_json()));
     }
-    if method == "POST" && path == "/itl/pay/watch" {
+    if method == "POST" && path == "/sezs/pay/watch" {
         return Some(handle_watch(body));
     }
     Some(json_resp(404, json!({"ok": false, "error": "not found"})))
@@ -590,17 +591,17 @@ mod tests {
 
     #[test]
     fn routes_exist() {
-        assert!(try_handle("GET", "/itl/pay/health", "").is_some());
-        assert!(try_handle("GET", "/itl/pay/quote", "").is_some());
-        assert!(try_handle("GET", "/itl/pay/instruct?rail=zec", "").is_some());
-        assert!(try_handle("GET", "/itl/pay/ticket?binding=x", "").is_some());
-        assert!(try_handle("POST", "/itl/pay/watch", "{}").is_some());
+        assert!(try_handle("GET", "/sezs/pay/health", "").is_some());
+        assert!(try_handle("GET", "/sezs/pay/quote", "").is_some());
+        assert!(try_handle("GET", "/sezs/pay/instruct?rail=zec", "").is_some());
+        assert!(try_handle("GET", "/sezs/pay/ticket?binding=x", "").is_some());
+        assert!(try_handle("POST", "/sezs/pay/watch", "{}").is_some());
         assert!(try_handle("GET", "/frost", "").is_none());
     }
 
     #[test]
     fn browser_forged_paid_does_not_unlock() {
-        let forged = try_handle("POST", "/itl/pay/watch", r#"{"paid":true}"#).unwrap();
+        let forged = try_handle("POST", "/sezs/pay/watch", r#"{"paid":true}"#).unwrap();
         assert_eq!(forged.status, 400);
         let v: Value = serde_json::from_str(&forged.body).unwrap();
         assert_eq!(v["error"], "browser_paid");
@@ -608,7 +609,7 @@ mod tests {
 
         let post_ticket = try_handle(
             "POST",
-            "/itl/pay/ticket",
+            "/sezs/pay/ticket",
             r#"{"paid":true,"rail":"zec","binding":"forge-binding"}"#,
         )
         .unwrap();
@@ -617,7 +618,7 @@ mod tests {
         assert_eq!(t["error"], "browser_paid");
         assert_eq!(t["paid"], false);
 
-        let read = try_handle("GET", "/itl/pay/ticket?binding=forge-binding", "").unwrap();
+        let read = try_handle("GET", "/sezs/pay/ticket?binding=forge-binding", "").unwrap();
         assert_eq!(read.status, 200);
         let r: Value = serde_json::from_str(&read.body).unwrap();
         assert_eq!(r["paid"], false);
@@ -632,7 +633,7 @@ mod tests {
             "binding":"terp1r2watchunlock000000000000000000000000",
             "paid":true
         }"#;
-        let w = try_handle("POST", "/itl/pay/watch", body).unwrap();
+        let w = try_handle("POST", "/sezs/pay/watch", body).unwrap();
         assert_eq!(w.status, 200);
         let v: Value = serde_json::from_str(&w.body).unwrap();
         assert_eq!(v["paid"], true);
@@ -640,7 +641,7 @@ mod tests {
 
         let read = try_handle(
             "GET",
-            "/itl/pay/ticket?binding=terp1r2watchunlock000000000000000000000000",
+            "/sezs/pay/ticket?binding=terp1r2watchunlock000000000000000000000000",
             "",
         )
         .unwrap();

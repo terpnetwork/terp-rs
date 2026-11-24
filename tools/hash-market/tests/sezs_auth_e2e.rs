@@ -1,16 +1,16 @@
-//! ITL Speakeasy product suite — same crate as combo / ict_workflow.
+//! SEZS Speakeasy product suite — same crate as combo / ict_workflow.
 //!
 //! Local (always):
-//!   cargo test --manifest-path tools/onboard-authz/Cargo.toml --test itl_auth_e2e
+//!   cargo test --manifest-path tools/onboard-authz/Cargo.toml --test sezs_auth_e2e
 //!
 //! Live LCD query (optional):
 //!   ICT_LCD=https://testnet-api.terp.network ICT_CHAIN=120u-1 \
-//!     cargo test --manifest-path tools/onboard-authz/Cargo.toml --test itl_auth_e2e -- --ignored --nocapture
+//!     cargo test --manifest-path tools/onboard-authz/Cargo.toml --test sezs_auth_e2e -- --ignored --nocapture
 //!
 //! Live add/rotate needs a signer + feegrant (HashMerchant onboard). Set
 //! ITL_AUTH_ADDR + ITL_AUTH_BROADCAST=1. Until then the in-process rotate is SoT.
 
-use hash_market::onboard_authz::itl_auth::{
+use hash_market::onboard_authz::sezs_auth::{
     AuthAccount, ComposeOp, Device, add_device, lcd_authenticators_path, local_anyof_rotate,
     msg_add_any_of, msg_remove_authenticator, parse_authenticator_ids,
     query_json_looks_like_account, rotate, zip321_ok,
